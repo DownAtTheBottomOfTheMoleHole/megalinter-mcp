@@ -30,6 +30,9 @@ jobs:
       - name: Check code style & types
         run: npm run check
 
+      - name: Run tests
+        run: npm test
+
       - name: Build project
         run: npm run build
 

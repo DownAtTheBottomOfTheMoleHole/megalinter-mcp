@@ -8,6 +8,15 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import {
+  type ToolArgs,
+  formatOutput,
+  readBool,
+  readNumber,
+  readString,
+  readStringArray,
+  resolveRunnerPackage,
+} from "./utils.js";
 
 const DEFAULT_FLAVOR = "all";
 const DEFAULT_RELEASE = "v9";
@@ -36,8 +45,6 @@ const KNOWN_FLAVORS = [
   "terraform",
 ];
 
-type ToolArgs = Record<string, unknown>;
-
 type ProcessResult = {
   exitCode: number;
   stdout: string;
@@ -56,88 +63,6 @@ const server = new Server(
     },
   },
 );
-
-function readString(args: ToolArgs, key: string): string | undefined {
-  const value = args[key];
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function readBool(
-  args: ToolArgs,
-  key: string,
-  defaultValue = false,
-): boolean {
-  const value = args[key];
-  if (typeof value === "boolean") {
-    return value;
-  }
-
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (["true", "1", "yes", "y"].includes(normalized)) {
-      return true;
-    }
-
-    if (["false", "0", "no", "n"].includes(normalized)) {
-      return false;
-    }
-  }
-
-  return defaultValue;
-}
-
-function readNumber(
-  args: ToolArgs,
-  key: string,
-  defaultValue: number,
-): number {
-  const value = args[key];
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === "string") {
-    const parsed = Number.parseInt(value, 10);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-
-  return defaultValue;
-}
-
-function readStringArray(args: ToolArgs, key: string): string[] {
-  const value = args[key];
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .filter((item): item is string => typeof item === "string")
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-}
-
-function formatOutput(output: string, maxChars = 120_000): string {
-  if (output.length <= maxChars) {
-    return output;
-  }
-
-  const head = output.slice(0, Math.floor(maxChars * 0.6));
-  const tail = output.slice(output.length - Math.floor(maxChars * 0.3));
-  return `${head}\n\n... output truncated ...\n\n${tail}`;
-}
-
-function resolveRunnerPackage(runnerVersion: string): string {
-  return runnerVersion === "latest"
-    ? "mega-linter-runner"
-    : `mega-linter-runner@${runnerVersion}`;
-}
 
 function buildRunnerArgs(args: ToolArgs): string[] {
   const cliArgs: string[] = [];

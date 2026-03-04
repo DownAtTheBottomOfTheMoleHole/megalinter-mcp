@@ -34,7 +34,9 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
-    "check": "npm run build"
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "engines": {
     "node": ">=24.0.0"
@@ -48,7 +50,8 @@
   "devDependencies": {
     "@types/node": "^25.3.3",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   },
   "license": "MIT"
 }
