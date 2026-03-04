@@ -6,8 +6,8 @@ MEGALINTER_COMMENT: true
 MEGALINTER_COMMENT_PR_REQUEST_CHANGES: true
 GITHUB_COMMENT_PR_REQUEST_CHANGES: true
 
-# Enable/disable linters
-ENABLE_LINTERS:
+# Enable linters by language/format group
+ENABLE:
   - MARKDOWN
   - JSON
   - YAML
