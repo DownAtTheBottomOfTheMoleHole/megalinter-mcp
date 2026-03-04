@@ -1,0 +1,76 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base",
+    ":enableVulnerabilityAlerts",
+    ":semanticCommitTypeAll(chore)",
+    ":ignoreModulesAndTests"
+  ],
+  "description": "Renovate configuration for MegaLinter MCP Server",
+  "timezone": "UTC",
+  "automerge": false,
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "minimumReleaseAge": "1 day",
+  "internalChecksFilter": "flexible",
+  "packageRules": [
+    {
+      "groupName": "Node.js & Core Dependencies",
+      "matchDatasources": ["npm"],
+      "matchPackagePatterns": [
+        "^@modelcontextprotocol",
+        "typescript",
+        "tsx",
+        "@types/node"
+      ],
+      "automerge": false,
+      "schedule": ["after 10pm on Sunday", "after 10pm on Wednesday"]
+    },
+    {
+      "groupName": "GitHub Actions",
+      "matchDatasources": ["github-tags"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    },
+    {
+      "groupName": "DevDependencies",
+      "matchDepTypes": ["devDependencies"],
+      "automerge": false,
+      "schedule": ["after 10pm on Sunday", "after 10pm on Wednesday"]
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["breaking-change"],
+      "assignees": ["@owner"]
+    },
+    {
+      "matchUpdateTypes": ["minor"],
+      "labels": ["feature"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    },
+    {
+      "matchUpdateTypes": ["patch", "digest"],
+      "labels": ["maintenance"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    }
+  ],
+  "postUpdateOptions": ["npmDedupe", "yarnDedupeHighest"],
+  "npm": {
+    "rangeStrategy": "bump"
+  },
+  "vulnerabilityAlerts": {
+    "assignees": ["@owner"],
+    "labels": ["security"],
+    "automerge": false
+  },
+  "prCreation": "all",
+  "prConcurrentLimit": 3,
+  "prConcurrentLimitType": "global",
+  "semanticCommits": "enabled"
+}

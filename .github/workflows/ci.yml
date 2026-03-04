@@ -1,0 +1,79 @@
+name: CI & Build Verification
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Verify Build & Dependencies
+    
+    strategy:
+      matrix:
+        node-version: [24.x]
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check code style & types
+        run: npm run check
+
+      - name: Build project
+        run: npm run build
+
+      - name: Run security audit
+        run: npm audit --production --audit-level=moderate
+
+      - name: Verify dist files
+        run: |
+          test -f dist/index.js && echo "✅ dist/index.js exists" || exit 1
+          test -f dist/index.d.ts && echo "✅ dist/index.d.ts exists" || exit 1
+
+  lint:
+    runs-on: ubuntu-latest
+    name: MegaLinter Compliance Scan
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run MegaLinter
+        uses: oxsecurity/megalinter-action@v8
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_MARKDOWN: true
+          VALIDATE_JSON: true
+          VALIDATE_YAML: true
+          VALIDATE_TYPESCRIPT: true
+          VALIDATE_BASH: true
+          VALIDATE_SPELL: true
+          FAIL_IF_ERRORS: true
+          MEGALINTER_CONFIG_FILE: .mega-linter.yml
+
+      - name: Upload MegaLinter reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: megalinter-reports
+          path: megalinter-reports/
+          retention-days: 30
+
+      - name: Upload SARIF report
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: megalinter-reports/sarif-report.sarif
+          wait-for-processing: true

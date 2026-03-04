@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "megalinter-ox-security": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["./dist/index.js"]
+    }
+  }
+}

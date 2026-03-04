@@ -1,0 +1,54 @@
+{
+  "name": "@downatthebottomofthemolehole/megalinter-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for running Ox Security MegaLinter via mega-linter-runner",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "mcp": {
+    "name": "megalinter-ox-security",
+    "description": "Ox Security MegaLinter linting via MCP"
+  },
+  "keywords": [
+    "mcp",
+    "megalinter",
+    "linting",
+    "code-quality",
+    "ox-security",
+    "mega-linter-runner"
+  ],
+  "author": "Carl Dawson",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/downatthebottomofthemolehole/megalinter-mcp"
+  },
+  "homepage": "https://github.com/downatthebottomofthemolehole/megalinter-mcp",
+  "bugs": {
+    "url": "https://github.com/downatthebottomofthemolehole/megalinter-mcp/issues"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "check": "npm run build"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "license": "MIT"
+}
