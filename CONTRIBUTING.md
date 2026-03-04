@@ -1,195 +1,57 @@
-# Contributing to MegaLinter MCP Server
+# Contributing
 
-Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to the project.
+Thank you for contributing to this project.
 
-## Code of Conduct
+## Before You Start
 
-Please be respectful and constructive in all interactions. We're committed to providing a welcoming and inclusive environment for all contributors.
+- Read [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
+- Search existing issues before opening a new one
+- Keep pull requests focused and small where possible
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
+- Node.js `>=24.0.0`
+- npm
+- Docker or Colima for local MegaLinter runs
 
-- Node.js >= 24.0.0
-- npm (bundled with Node.js)
-- Docker or Colima (required to test `megalinter_run` tool locally)
+## Local Setup
 
-### Setup Development Environment
-
-1. **Fork and clone the repository**
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/megaliter-mcp.git
-   cd megaliter-mcp
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Build the project**
-   ```bash
-   npm run build
-   ```
-
-4. **Run tests**
-   ```bash
-   npm test
-   ```
-
-## Making Changes
-
-### Branch Naming
-
-Use descriptive branch names following the pattern:
-- `feature/description` — for new features
-- `fix/description` — for bug fixes
-- `docs/description` — for documentation improvements
-- `chore/description` — for maintenance tasks
-
-Example: `feature/add-verbose-output`
-
-### Commit Messages
-
-Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
-
-```
-type(scope): description
-
-[optional body]
-[optional footer]
+```bash
+git clone https://github.com/YOUR_USERNAME/megalinter-mcp.git
+cd megalinter-mcp
+npm install
+npm run build
 ```
 
-Examples:
-- `feat(tools): add output truncation limit`
-- `fix(runner): handle timeout correctly`
-- `docs(readme): clarify Docker requirement`
-- `chore(deps): bump @types/node to 25.3.3`
+## Development Standards
 
-### Code Quality
+- Use TypeScript and existing project conventions
+- Keep changes scoped to the requested task
+- Update relevant documentation when behaviour changes
+- Use clear commit messages (Conventional Commit style is preferred)
 
-Before committing, ensure:
+## Validation Checklist
 
-1. **Types are correct:**
-   ```bash
-   npm run check
-   ```
+Run before opening a pull request:
 
-2. **Code builds:**
-   ```bash
-   npm run build
-   ```
+```bash
+npm run check
+npm run build
+npm audit --production
+```
 
-3. **Code is compliant:**
-   ```bash
-   # Requires Docker running
-   npx mega-linter-runner --path . --config .mega-linter.yml
-   ```
-
-4. **Security audit passes:**
-   ```bash
-   npm audit --production
-   ```
-
-### Testing
-
-- Add tests for new features
-- Verify existing tests still pass
-- Test the MCP server manually if changes involve tool signatures
-
-Manual testing via Copilot Chat (after building):
-1. Reload VS Code window (`Cmd+Shift+P` → "Developer: Reload Window")
-2. Open Copilot Chat
-3. Use `@megalinter-ox-security` to test tools
+If Docker is available, run MegaLinter locally as well.
 
 ## Pull Request Process
 
-1. **Update your branch with latest main:**
-   ```bash
-   git fetch origin
-   git rebase origin/main
-   ```
+1. Create a feature branch.
+2. Implement and validate your changes.
+3. Open a pull request using the provided template.
+4. Ensure all CI checks pass.
+5. Address review feedback and merge when approved.
 
-2. **Push your changes:**
-   ```bash
-   git push origin feature/my-feature
-   ```
+## Security Reporting
 
-3. **Create a Pull Request:**
-   - Use the PR template (auto-populated)
-   - Assign appropriate labels (`feature`, `bug`, `documentation`, etc.)
-   - Link related issues if applicable
-   - Provide clear description of changes
+For vulnerabilities, do not open a public issue.
 
-4. **Address CI feedback:**
-   - Resolve any lint/build errors
-   - All GitHub Actions must pass before merge
-
-5. **Wait for review:**
-   - A maintainer will review your PR
-   - Address any requested changes
-   - Once approved, the PR can be merged
-
-## PR Template Checklist
-
-When creating a PR, ensure you complete the auto-populated template:
-- [ ] Description of changes
-- [ ] Type of change (Feature/Fix/Docs)
-- [ ] Testing instructions
-- [ ] All checklist items completed
-
-## Documentation
-
-- Update README.md for user-facing changes
-- Update relevant .md files in root (TESTING.md, COMPLIANCE_AND_UPDATES.md, etc.)
-- Add inline code comments for complex logic
-- Follow British English spelling in documentation
-
-## Dependency Updates
-
-Renovate automatically creates dependency update PRs. When reviewing:
-- **Patch updates** — Usually safe, auto-merged by Renovate
-- **Minor updates** — Review for breaking changes, auto-merged by Renovate
-- **Major updates** — Requires careful testing; manual merge required
-
-For manual updates:
-```bash
-npm update
-npm install PACKAGE_NAME@latest
-```
-
-Then commit with:
-```bash
-git commit -m "chore(deps): update dependencies"
-```
-
-## Release Process
-
-Releases are automated via GitHub Actions. To create a release:
-
-1. **Create a release on GitHub:**
-   - Go to [Releases](../../releases)
-   - Click "Draft a new release"
-   - Use semantic versioning (v0.1.0, v0.2.0, v1.0.0)
-   - Let GitHub auto-generate release notes from PR labels
-   - Publish the release
-
-2. **GitHub Actions will automatically:**
-   - Run MegaLinter compliance scan
-   - Build the project
-   - Publish to GitHub Packages registry
-
-## Questions or Need Help?
-
-- Check existing [Issues](../../issues)
-- Review [TESTING.md](./TESTING.md) for technical details
-- See [COMPLIANCE_AND_UPDATES.md](./COMPLIANCE_AND_UPDATES.md) for quality standards
-- Read [GITHUB_AUTOMATION.md](./GITHUB_AUTOMATION.md) for workflow details
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the MIT License.
-
----
-
-Thank you for contributing! Your work helps make MegaLinter MCP Server better for everyone.
+Follow the process in [SECURITY.md](./SECURITY.md).

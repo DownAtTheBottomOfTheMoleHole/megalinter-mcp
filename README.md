@@ -4,8 +4,8 @@
 
 > **Note:** This is a community-maintained MCP server. It is not an official Model Context Protocol server, but it is **sanctioned by Ox Security** as a complement to their official MegaLinter tools.
 
-[![CI Status](https://github.com/DownAtTheBottomOfTheMoleHole/megaliter-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DownAtTheBottomOfTheMoleHole/megaliter-mcp/actions/workflows/ci.yml)
-[![Publish Status](https://github.com/DownAtTheBottomOfTheMoleHole/megaliter-mcp/actions/workflows/publish.yml/badge.svg)](https://github.com/DownAtTheBottomOfTheMoleHole/megaliter-mcp/actions/workflows/publish.yml)
+[![CI Status](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/ci.yml)
+[![Publish Status](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/publish.yml/badge.svg)](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/publish.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen)](https://nodejs.org/)
 
@@ -137,7 +137,7 @@ Set breakpoints in `src/index.ts`, then press `F5`.
 
 ## Testing
 
-See [TESTING.md](./TESTING.md) for Copilot Chat scenarios, manual JSON-RPC checks, and troubleshooting guidance.
+See [docs/TESTING.md](./docs/TESTING.md) for Copilot Chat scenarios, manual JSON-RPC checks, and troubleshooting guidance.
 
 Quick validation prompt in Copilot Chat:
 
@@ -166,10 +166,10 @@ Quick validation prompt in Copilot Chat:
 ## Community & Contributing
 
 - 🤝 **[Contributing Guide](./CONTRIBUTING.md)** — Start here to contribute code, report bugs, or request features
+- 📜 **[Code of Conduct](./CODE_OF_CONDUCT.md)** — Expected community behaviour
 - 🔒 **[Security Policy](./SECURITY.md)** — Report vulnerabilities responsibly
-- 📝 **[Compliance & Updates](./COMPLIANCE_AND_UPDATES.md)** — MegaLinter and Renovate configuration details
-- 🧪 **[Testing Guide](./TESTING.md)** — Manual testing and validation procedures
-- ⚙️ **[GitHub Automation](./GITHUB_AUTOMATION.md)** — How CI/CD workflows operate
+- 🧪 **[Testing Guide](./docs/TESTING.md)** — Manual testing and validation procedures
+- ⚙️ **[Maintainer Guide](./docs/MAINTAINERS.md)** — Release, CI/CD, and dependency update operations
 
 ## Attribution & License
 

@@ -87,6 +87,7 @@ Expected: Full run executes and writes reports to `megalinter-reports`.
 2. Set breakpoints
 3. Press `F5`
 4. Choose:
+
    - `Debug MCP Server`
    - or `Debug MCP Server (Built)`
 
@@ -109,54 +110,6 @@ In a second terminal, test `tools/list`:
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node dist/index.js
-```
-
-## Expected Tool Inputs
-
-### `megalinter_list_flavors`
-
-- Input: none
-- Output: text list of known flavors
-
-### `megalinter_write_config`
-
-Input shape:
-
-```json
-{
-  "targetPath": ".mega-linter.yml",
-  "applyFixes": "none",
-  "showElapsedTime": true,
-  "flavorSuggestions": false,
-  "disableLinters": ["COPYPASTE"]
-}
-```
-
-### `megalinter_run`
-
-Input shape:
-
-```json
-{
-  "workingDirectory": ".",
-  "path": ".",
-  "flavor": "all",
-  "release": "v9",
-  "image": "optional-custom-image",
-  "env": "KEY=value",
-  "fix": false,
-  "help": false,
-  "install": false,
-  "containerName": "optional-name",
-  "removeContainer": false,
-  "configFile": ".mega-linter.yml",
-  "reportsPath": "megalinter-reports",
-  "disableLinters": "COPYPASTE,MARKDOWN_MARKDOWNLINT",
-  "lintChangedFilesOnly": false,
-  "runnerVersion": "latest",
-  "timeoutSeconds": 3600,
-  "extraArgs": ["--debug"]
-}
 ```
 
 ## Troubleshooting
