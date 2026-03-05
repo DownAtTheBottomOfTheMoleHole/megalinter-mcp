@@ -214,7 +214,7 @@ jobs:
         run: ./mcp-publisher publish
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@de2341bd7d9b49dd8a4530b3fb7fd5a54b7be32d # v0.1.15
+        uses: softprops/action-gh-release@v0.1.15
         with:
           tag_name: v${{ steps.release_version.outputs.value }}
           name: v${{ steps.release_version.outputs.value }}
