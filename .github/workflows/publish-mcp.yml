@@ -133,4 +133,4 @@ jobs:
         run: |
           echo "✅ Version: $VERSION"
           echo "✅ Package published to npm: https://www.npmjs.com/package/@downatthebottomofthemolehole/megalinter-mcp-server"
-          echo "✅ Server published to MCP Registry: io.github.downatthebottomofthemolehole/megalinter"
+          echo "✅ Server published to MCP Registry: io.github.DownAtTheBottomOfTheMoleHole/megalinter"
