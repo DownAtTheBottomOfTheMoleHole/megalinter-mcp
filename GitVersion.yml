@@ -1,5 +1,4 @@
-workflow: GitHubFlow/v1
-mode: MainLine
+workflow: TrunkBased/preview1
 next-version: 0.1.1
 tag-prefix: '[vV]?'
 
