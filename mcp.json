@@ -1,7 +1,7 @@
 {
   "name": "megalinter",
   "registry_name": "io.github.DownAtTheBottomOfTheMoleHole/megalinter",
-  "version": "1.0.0-1",
+  "version": "1.0.2-2",
   "description": "MCP server for Ox Security MegaLinter integration",
   "author": "Carl Dawson",
   "license": "MIT",
