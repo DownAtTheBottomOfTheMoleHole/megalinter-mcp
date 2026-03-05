@@ -3,6 +3,12 @@ name: Publish to npm and MCP Registry
 on:
   push:
     tags: ["v*"] # Triggers on version tags like v0.1.0
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (without v prefix). Optional when running against a tag ref."
+        required: false
+        type: string
 
 jobs:
   test-and-build:
@@ -80,14 +86,53 @@ jobs:
           registry-url: "https://registry.npmjs.org"
           cache: npm
 
+      - name: Resolve release version
+        id: release_version
+        run: |
+          VERSION="${{ inputs.version }}"
+          if [[ -z "$VERSION" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+
+          if [[ "$GITHUB_REF_TYPE" != "tag" && -z "${{ inputs.version }}" ]]; then
+            echo "::error::For manual workflow runs on branches, provide the version input."
+            exit 1
+          fi
+
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Sync version files
+        env:
+          VERSION: ${{ steps.release_version.outputs.value }}
+        run: |
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          node -e "const fs = require('fs'); const p = 'server.json'; const data = JSON.parse(fs.readFileSync(p, 'utf8')); data.version = process.env.VERSION; if (Array.isArray(data.packages)) { data.packages = data.packages.map((pkg) => ({ ...pkg, version: process.env.VERSION })); } fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\n');"
+
       - name: Install dependencies
         run: npm ci
 
       - name: Build package
         run: npm run build
 
+      - name: Check npm package version
+        id: npm_version_check
+        env:
+          PACKAGE_NAME: "@downatthebottomofthemolehole/megalinter-mcp-server"
+          VERSION: ${{ steps.release_version.outputs.value }}
+        run: |
+          if npm view "${PACKAGE_NAME}@${VERSION}" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish package to npm (Trusted Publishing)
+        if: steps.npm_version_check.outputs.exists != 'true'
         run: npm publish --provenance --access public
+
+      - name: Skip npm publish (already exists)
+        if: steps.npm_version_check.outputs.exists == 'true'
+        run: echo "ℹ️ npm package version already exists; skipping npm publish."
 
       - name: Install mcp-publisher
         run: |
@@ -101,6 +146,9 @@ jobs:
 
       - name: Create deployment summary
         if: success()
+        env:
+          VERSION: ${{ steps.release_version.outputs.value }}
         run: |
+          echo "✅ Version: $VERSION"
           echo "✅ Package published to npm: https://www.npmjs.com/package/@downatthebottomofthemolehole/megalinter-mcp-server"
           echo "✅ Server published to MCP Registry: io.github.downatthebottomofthemolehole/megalinter"

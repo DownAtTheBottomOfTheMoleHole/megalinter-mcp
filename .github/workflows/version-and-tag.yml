@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
 
     steps:
       - name: Checkout code
@@ -88,6 +89,14 @@ jobs:
           git tag "v$VERSION"
           git push origin HEAD:main
           git push origin "v$VERSION"
+
+      - name: Trigger publish workflow
+        if: steps.release_check.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release_check.outputs.computed_version }}
+        run: |
+          gh workflow run publish-mcp.yml --repo "${{ github.repository }}" --ref "v$VERSION" -f version="$VERSION"
 
       - name: Release skipped summary
         if: steps.release_check.outputs.should_release != 'true'
