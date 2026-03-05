@@ -30,6 +30,9 @@ jobs:
       - name: Check code style & types
         run: npm run check
 
+      - name: Run tests
+        run: npm test
+
       - name: Build project
         run: npm run build
 
@@ -44,6 +47,11 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     name: MegaLinter Compliance Scan
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+      issues: write
     
     steps:
       - uses: actions/checkout@v4
@@ -51,17 +59,9 @@ jobs:
           fetch-depth: 0
 
       - name: Run MegaLinter
-        uses: oxsecurity/megalinter-action@v8
+        uses: oxsecurity/megalinter@v9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_MARKDOWN: true
-          VALIDATE_JSON: true
-          VALIDATE_YAML: true
-          VALIDATE_TYPESCRIPT: true
-          VALIDATE_BASH: true
-          VALIDATE_SPELL: true
-          FAIL_IF_ERRORS: true
-          MEGALINTER_CONFIG_FILE: .mega-linter.yml
 
       - name: Upload MegaLinter reports
         if: always()
@@ -73,7 +73,7 @@ jobs:
 
       - name: Upload SARIF report
         if: always()
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: megalinter-reports/sarif-report.sarif
           wait-for-processing: true

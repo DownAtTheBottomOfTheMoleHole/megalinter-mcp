@@ -42,7 +42,7 @@
       "matchUpdateTypes": ["major"],
       "automerge": false,
       "labels": ["breaking-change"],
-      "assignees": ["@owner"]
+      "assignees": ["@downatthebottomofthemolehole"]
     },
     {
       "matchUpdateTypes": ["minor"],
@@ -64,7 +64,7 @@
     "rangeStrategy": "bump"
   },
   "vulnerabilityAlerts": {
-    "assignees": ["@owner"],
+    "assignees": ["@downatthebottomofthemolehole"],
     "labels": ["security"],
     "automerge": false
   },

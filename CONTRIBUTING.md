@@ -17,7 +17,7 @@ Thank you for contributing to this project.
 ## Local Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/megalinter-mcp.git
+git clone https://github.com/downatthebottomofthemolehole/megalinter-mcp.git
 cd megalinter-mcp
 npm install
 npm run build

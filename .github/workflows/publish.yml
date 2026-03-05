@@ -19,17 +19,9 @@ jobs:
           fetch-depth: 0
 
       - name: Run MegaLinter compliance scan
-        uses: oxsecurity/megalinter-action@v8
+        uses: oxsecurity/megalinter@v9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_MARKDOWN: true
-          VALIDATE_JSON: true
-          VALIDATE_YAML: true
-          VALIDATE_TYPESCRIPT: true
-          VALIDATE_BASH: true
-          VALIDATE_SPELL: true
-          FAIL_IF_ERRORS: true
-          MEGALINTER_CONFIG_FILE: .mega-linter.yml
 
       - name: Upload compliance reports
         if: always()
@@ -59,6 +51,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Run tests
+        run: npm test
 
       - name: Build project
         run: npm run build
