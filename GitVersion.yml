@@ -1,5 +1,5 @@
 workflow: GitHubFlow/v1
-mode: Mainline
+mode: MainLine
 next-version: 0.1.1
 tag-prefix: '[vV]?'
 
