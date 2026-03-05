@@ -16,10 +16,10 @@ jobs:
         node-version: [24.x]
 
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53b118027f672f65262f # v4.1.1
       
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4.0.2
+        uses: actions/setup-node@60edb3dd545a775178fabbf331464a5f10c6b5f8 # v4.0.2
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -59,13 +59,13 @@ jobs:
           fetch-depth: 0
 
       - name: Run MegaLinter
-        uses: oxsecurity/megalinter@v9
+        uses: oxsecurity/megalinter@3fba7eaa9e4f0bf56e5f5e9f0de5f945c7f0a8ee # v9.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload MegaLinter reports
         if: always()
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
         with:
           name: megalinter-reports
           path: megalinter-reports/
@@ -73,7 +73,7 @@ jobs:
 
       - name: Upload SARIF report
         if: always()
-        uses: github/codeql-action/upload-sarif@v3.24.5
+        uses: github/codeql-action/upload-sarif@1b1aada464948af03b950b1664c849277369bc49a # v3.24.5
         with:
           sarif_file: megalinter-reports/sarif-report.sarif
           wait-for-processing: true
