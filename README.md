@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen)](https://nodejs.org/)
 
-A Model Context Protocol (MCP) server for running [Ox Security MegaLinter](https://megalinter.io/) through `mega-linter-runner`, using Azure DevOps-style argument mapping.
+A Model Context Protocol (MCP) server for running [Ox Security MegaLinter](https://megalinter.io/) through `mega-linter-runner`. Works with any CI/CD platform (GitHub Actions, GitLab CI, Azure DevOps, CircleCI, Jenkins) or locally.
 
 ## Overview
 
@@ -18,6 +18,19 @@ This server provides three MCP tools:
 - `megalinter_run` to execute MegaLinter with configurable runtime and runner options.
 - `megalinter_write_config` to generate a minimal `.mega-linter.yml` file.
 - `megalinter_list_flavors` to return common MegaLinter flavors.
+
+### Platform Compatibility
+
+This MCP server is **platform-agnostic** and works universally:
+
+- ✅ **Locally** — Run MegaLinter from your IDE or command line
+- ✅ **GitHub Actions** — Integrate with workflows
+- ✅ **GitLab CI/CD** — Use in GitLab pipelines
+- ✅ **Azure DevOps** — Run in Azure Pipelines
+- ✅ **CircleCI, Jenkins, Bitbucket Pipelines** — Any CI/CD platform with Docker support
+- ✅ **AI Agents & Copilot** — Automated code quality checks via MCP
+
+The only requirement is Docker (or a compatible container runtime like Colima).
 
 ## Tools
 
@@ -153,9 +166,12 @@ Quick validation prompt in Copilot Chat:
 - [MegaLinter repository](https://github.com/oxsecurity/megalinter) — Source code and issue tracking
 - [mega-linter-runner](https://www.npmjs.com/package/mega-linter-runner) — npm package used by this server
 
-### Azure DevOps Integration
+### CI/CD Integrations
 
-- [MegaLinter Azure DevOps Extension](https://github.com/downatthebottomofthemolehole/megalinter-ado) — Official ADO task by the same author (also sanctioned by Ox Security)
+- [MegaLinter Azure DevOps Extension](https://github.com/downatthebottomofthemolehole/megalinter-ado) — ADO task by the same author (also sanctioned by Ox Security)
+- GitHub Actions: Use MegaLinter's official [GitHub Action](https://github.com/marketplace/actions/megalinter)
+- GitLab CI/CD: See [MegaLinter GitLab integration docs](https://megalinter.io/latest/installation/#gitlab-ci)
+- Jenkins, CircleCI, and others: Run MegaLinter via Docker in any CI/CD pipeline
 
 ### Model Context Protocol
 
