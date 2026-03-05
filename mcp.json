@@ -1,6 +1,7 @@
 {
   "$schema": "https://mcp.run/schema/mcp.json",
-  "name": "megalinter-ox-security",
+  "name": "megalinter",
+  "registry_name": "io.github.DownAtTheBottomOfTheMoleHole/megalinter",
   "version": "0.3.6-2",
   "description": "MCP server for Ox Security MegaLinter integration",
   "author": "Carl Dawson",
