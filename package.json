@@ -1,6 +1,7 @@
 {
   "name": "@downatthebottomofthemolehole/megalinter-mcp-server",
   "version": "0.1.0",
+  "mcpName": "io.github.downatthebottomofthemolehole/megalinter",
   "description": "MCP server for running Ox Security MegaLinter via mega-linter-runner",
   "type": "module",
   "main": "dist/index.js",
@@ -42,9 +43,6 @@
   },
   "engines": {
     "node": ">=24.0.0"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.27.1"

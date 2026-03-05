@@ -1,0 +1,108 @@
+name: Publish to npm and MCP Registry
+
+on:
+  push:
+    tags: ["v*"] # Triggers on version tags like v0.1.0
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    name: Test, Build & Compliance
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: "lts/*"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build package
+        run: npm run build
+
+      - name: Verify build artifacts
+        run: |
+          test -f dist/index.js && echo "✅ dist/index.js exists" || exit 1
+          test -f dist/index.d.ts && echo "✅ dist/index.d.ts exists" || exit 1
+
+      - name: Run MegaLinter compliance scan
+        uses: oxsecurity/megalinter@ff177bfabd9088ff3ccaa7bc68f8ca3fd075ba5c # v9.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload MegaLinter reports
+        if: always()
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: megalinter-reports
+          path: megalinter-reports/
+          retention-days: 30
+
+      - name: Upload SARIF report
+        if: always()
+        uses: github/codeql-action/upload-sarif@47b3d888fe66b639e431abf22ebca059152f1eea # v3.24.5
+        with:
+          sarif_file: megalinter-reports/sarif-report.sarif
+          wait-for-processing: true
+
+  publish:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    name: Publish to npm and MCP Registry
+    permissions:
+      id-token: write # Required for OIDC authentication to MCP Registry
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: "lts/*"
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package
+        run: npm run build
+
+      - name: Publish package to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Authenticate to MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server to MCP Registry
+        run: ./mcp-publisher publish
+
+      - name: Create deployment summary
+        if: success()
+        run: |
+          echo "✅ Package published to npm: https://www.npmjs.com/package/@downatthebottomofthemolehole/megalinter-mcp-server"
+          echo "✅ Server published to MCP Registry: io.github.downatthebottomofthemolehole/megalinter"

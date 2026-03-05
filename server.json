@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.downatthebottomofthemolehole/megalinter",
+  "description": "MCP server for running Ox Security MegaLinter via mega-linter-runner",
+  "repository": {
+    "url": "https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@downatthebottomofthemolehole/megalinter-mcp-server",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
