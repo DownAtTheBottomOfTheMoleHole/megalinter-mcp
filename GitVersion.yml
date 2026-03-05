@@ -1,7 +1,7 @@
 workflow: GitHubFlow/v1
 
 mode: ContinuousDelivery
-next-version: 0.2.8
+next-version: 1.0.0
 tag-prefix: '[vV]?'
 
 strategies:
