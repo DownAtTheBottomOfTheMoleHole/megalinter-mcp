@@ -24,13 +24,10 @@
     "mega-linter-runner"
   ],
   "author": "Carl Dawson",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/downatthebottomofthemolehole/megalinter-mcp"
-  },
-  "homepage": "https://github.com/downatthebottomofthemolehole/megalinter-mcp",
+  "repository": "https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp",
+  "homepage": "https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp",
   "bugs": {
-    "url": "https://github.com/downatthebottomofthemolehole/megalinter-mcp/issues"
+    "url": "https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/issues"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

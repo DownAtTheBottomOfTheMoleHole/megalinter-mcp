@@ -108,7 +108,9 @@ jobs:
 
       - name: Publish package to npm (Trusted Publishing)
         if: steps.npm_version_check.outputs.exists != 'true'
-        run: npm publish --provenance --access public
+        env:
+          NPM_CONFIG_PROVENANCE: "false"
+        run: npm publish --access public
 
       - name: Skip npm publish (already exists)
         if: steps.npm_version_check.outputs.exists == 'true'
