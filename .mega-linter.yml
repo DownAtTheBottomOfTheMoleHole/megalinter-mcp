@@ -18,13 +18,14 @@ ENABLE:
 # Disable specific linters for GitHub workflows (they have YAML frontmatter)
 MARKDOWN_MARKDOWNLINT_DISABLED: false
 MARKDOWN_MARKDOWNLINT_FILTER_REGEX_EXCLUDE: |
-  \.github/(?:ISSUE_TEMPLATE|pull_request_template)\.md
+  \.github/(?:ISSUE_TEMPLATE|pull_request_template)\.md|LICENSE
 
 # TypeScript linting
 TYPESCRIPT_ES_TARGET: ES2022
 TYPESCRIPT_ESLINT_CONFIG_FILE: .eslintrc.json
 
 # Spelling checker
+SPELL_CSPELL_CONFIG_FILE: cspell.json
 SPELL_CSPELL_FILE_EXTENSIONS:
   - .ts
   - .js
