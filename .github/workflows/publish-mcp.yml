@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Publish to npm and MCP Registry
     permissions:
-      id-token: write # Required for OIDC authentication to MCP Registry
+      id-token: write # Required for OIDC authentication to npm and MCP Registry
       contents: read
 
     steps:
@@ -86,10 +86,8 @@ jobs:
       - name: Build package
         run: npm run build
 
-      - name: Publish package to npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish package to npm (Trusted Publishing)
+        run: npm publish --provenance --access public
 
       - name: Install mcp-publisher
         run: |
