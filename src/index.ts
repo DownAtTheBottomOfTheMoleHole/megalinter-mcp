@@ -18,7 +18,8 @@ import {
   resolveRunnerPackage,
 } from "./utils.js";
 
-const DEFAULT_FLAVOR = "all";const DEFAULT_RELEASE = "v9";
+const DEFAULT_FLAVOR = "all";
+const DEFAULT_RELEASE = "v9";
 const DEFAULT_REPORTS_PATH = "megalinter-reports";
 const DEFAULT_TIMEOUT_SECONDS = 3600;
 
@@ -284,7 +285,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "megalinter_run",
         description:
-          "Run Ox Security MegaLinter using mega-linter-runner with Azure DevOps extension style inputs.",
+          "Run Ox Security MegaLinter using mega-linter-runner. Works locally or in any CI/CD environment.",
         inputSchema: {
           type: "object",
           properties: {
