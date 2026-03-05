@@ -213,6 +213,17 @@ jobs:
       - name: Publish server to MCP Registry
         run: ./mcp-publisher publish
 
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@de2341bd7d9b49dd8a4530b3fb7fd5a54b7be32d # v0.1.15
+        with:
+          tag_name: v${{ steps.release_version.outputs.value }}
+          name: v${{ steps.release_version.outputs.value }}
+          draft: false
+          prerelease: ${{ contains(steps.release_version.outputs.value, 'rc') || contains(steps.release_version.outputs.value, 'hotfix') }}
+          files: dist/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create deployment summary
         if: success()
         env:
