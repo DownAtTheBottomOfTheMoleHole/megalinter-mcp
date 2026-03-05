@@ -1,0 +1,62 @@
+repos:
+  # YAML and JSON validation
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: detect-private-key
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.37.0
+    hooks:
+      - id: markdownlint
+        args: [--config, .markdownlintrc.json]
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [--config-data, '{extends: default, rules: {line-length: disable}}']
+
+  # JavaScript/TypeScript linting via Node (eslint installed locally)
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: npm run lint --
+        language: system
+        types: [typescript]
+        require_serial: false
+        stages: [commit]
+
+  # TypeScript type checking
+  - repo: local
+    hooks:
+      - id: typescript-check
+        name: typescript
+        entry: npm run check
+        language: system
+        types: [typescript]
+        pass_filenames: false
+        stages: [commit]
+
+# Global settings
+default_language_version:
+  node: 24.0.0
+
+ci:
+  autofix_commit_msg: 'chore: auto-format with pre-commit'
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: 'chore: pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false
