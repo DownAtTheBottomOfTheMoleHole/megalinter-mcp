@@ -1,33 +1,33 @@
 {
-    "$schema": "https://mcp.run/schema/mcp.json",
-    "name": "megalinter-ox-security",
-    "version": "0.2.7",
-    "description": "MCP server for Ox Security MegaLinter integration",
-    "author": "Carl Dawson",
-    "license": "MIT",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp"
+  "$schema": "https://mcp.run/schema/mcp.json",
+  "name": "megalinter-ox-security",
+  "version": "0.3.6-2",
+  "description": "MCP server for Ox Security MegaLinter integration",
+  "author": "Carl Dawson",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp"
+  },
+  "homepage": "https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp",
+  "keywords": [
+    "mcp",
+    "megalinter",
+    "linting",
+    "code-quality",
+    "ox-security"
+  ],
+  "entry": "dist/index.js",
+  "transport": "stdio",
+  "tools": [
+    {
+      "name": "megalinter_run",
+      "description": "Run MegaLinter on a local directory with specified flavour and configuration"
     },
-    "homepage": "https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp",
-    "keywords": [
-        "mcp",
-        "megalinter",
-        "linting",
-        "code-quality",
-        "ox-security"
-    ],
-    "entry": "dist/index.js",
-    "transport": "stdio",
-    "tools": [
-        {
-            "name": "megalinter_run",
-            "description": "Run MegaLinter on a local directory with specified flavour and configuration"
-        },
-        {
-            "name": "megalinter_list_flavors",
-            "description": "List all available MegaLinter flavours"
-        }
-    ],
-    "nodejs": ">=24.0.0"
+    {
+      "name": "megalinter_list_flavors",
+      "description": "List all available MegaLinter flavours"
+    }
+  ],
+  "nodejs": ">=24.0.0"
 }
