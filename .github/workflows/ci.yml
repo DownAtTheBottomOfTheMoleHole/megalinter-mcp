@@ -16,10 +16,10 @@ jobs:
         node-version: [24.x]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.1.1
       
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.0.2
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -65,7 +65,7 @@ jobs:
 
       - name: Upload MegaLinter reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.3.1
         with:
           name: megalinter-reports
           path: megalinter-reports/
@@ -73,7 +73,7 @@ jobs:
 
       - name: Upload SARIF report
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v3.24.5
         with:
           sarif_file: megalinter-reports/sarif-report.sarif
           wait-for-processing: true
