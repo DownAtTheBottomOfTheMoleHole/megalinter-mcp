@@ -14,12 +14,12 @@ jobs:
     name: Verify Compliance
     
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53b118027f672f65262f # v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
 
       - name: Run MegaLinter compliance scan
-        uses: oxsecurity/megalinter@3fba7eaa9e4f0bf56e5f5e9f0de5f945c7f0a8ee # v9.0.0
+        uses: oxsecurity/megalinter@ff177bfabd9088ff3ccaa7bc68f8ca3fd075ba5c # v9.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -37,12 +37,12 @@ jobs:
     name: Publish Package
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53b118027f672f65262f # v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
 
       - name: Use Node.js 24.x
-        uses: actions/setup-node@60edb3dd545a775178fabbf331464a5f10c6b5f8 # v4.0.2
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
           node-version: 24.x
           registry-url: https://npm.pkg.github.com
