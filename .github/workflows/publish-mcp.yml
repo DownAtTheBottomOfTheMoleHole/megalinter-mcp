@@ -221,6 +221,7 @@ jobs:
           draft: false
           prerelease: ${{ contains(steps.release_version.outputs.value, 'rc') || contains(steps.release_version.outputs.value, 'hotfix') }}
           files: dist/**
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -231,4 +232,4 @@ jobs:
         run: |
           echo "✅ Version: $VERSION"
           echo "✅ Package published to npm: https://www.npmjs.com/package/@downatthebottomofthemolehole/megalinter-mcp-server"
-          echo "✅ Server published to MCP Registry: io.github.DownAtTheBottomOfTheMoleHole/megalinter"
+          echo "✅ Server published to MCP Registry: DownAtTheBottomOfTheMoleHole/megalinter-mcp"
