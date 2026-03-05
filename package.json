@@ -1,6 +1,6 @@
 {
   "name": "@downatthebottomofthemolehole/megalinter-mcp-server",
-  "version": "0.1.0",
+  "version": "0.2.2",
   "mcpName": "io.github.downatthebottomofthemolehole/megalinter",
   "description": "MCP server for running Ox Security MegaLinter via mega-linter-runner",
   "type": "module",
