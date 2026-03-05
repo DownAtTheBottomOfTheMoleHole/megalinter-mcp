@@ -1,46 +1,136 @@
-name: Publish to npm and MCP Registry
+name: Release
 
 on:
   push:
-    tags: ["v*"] # Triggers on version tags like v0.1.0
+    branches:
+      - main
+    tags:
+      - '[vV]*'
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to publish (without v prefix). Optional when running against a tag ref."
+        description: 'Version to publish (without v prefix). Required for manual runs on branches.'
         required: false
         type: string
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: read
+  id-token: write
+
 jobs:
-  test-and-build:
+  version-and-tag:
+    if: github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    name: Test, Build & Compliance
     permissions:
-      contents: read
-      security-events: write
+      contents: write
+      actions: write
+
+    outputs:
+      should_release: ${{ steps.release_check.outputs.should_release }}
+      computed_version: ${{ steps.release_check.outputs.computed_version }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: 24.x
+
+      - uses: gittools/actions/gitversion/setup@71a79f7569b981036febd9ce5870f87e069928e7 # v4.3.3
+        with:
+          versionSpec: '6.6.x'
+
+      - uses: gittools/actions/gitversion/execute@71a79f7569b981036febd9ce5870f87e069928e7 # v4.3.3
+        id: gitversion
+        with:
+          configFilePath: GitVersion.yml
+
+      - name: Decide whether to release
+        id: release_check
+        run: |
+          VERSION="${{ steps.gitversion.outputs.semVer }}"
+          CURRENT_VERSION="$(node -p "require('./package.json').version")"
+
+          echo "computed_version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+
+          if [[ "$VERSION" == "$CURRENT_VERSION" ]]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "reason=version-unchanged" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git ls-remote --tags origin "refs/tags/v$VERSION" | grep -q "refs/tags/v$VERSION$"; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "reason=tag-exists" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "reason=release-required" >> "$GITHUB_OUTPUT"
+
+      - name: Update version files
+        if: steps.release_check.outputs.should_release == 'true'
+        env:
+          VERSION: ${{ steps.release_check.outputs.computed_version }}
+        run: |
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          node -e "const fs = require('fs'); const p = 'server.json'; const data = JSON.parse(fs.readFileSync(p, 'utf8')); data.version = process.env.VERSION; if (Array.isArray(data.packages)) { data.packages = data.packages.map((pkg) => ({ ...pkg, version: process.env.VERSION })); } fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\n');"
+          node -e "const fs = require('fs'); const p = 'mcp.json'; const data = JSON.parse(fs.readFileSync(p, 'utf8')); data.version = process.env.VERSION; fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\n');"
+
+      - name: Commit version bump
+        if: steps.release_check.outputs.should_release == 'true'
+        env:
+          VERSION: ${{ steps.release_check.outputs.computed_version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json server.json mcp.json
+          git commit -m "chore(release): v$VERSION"
+
+      - name: Push release commit and tag
+        if: steps.release_check.outputs.should_release == 'true'
+        env:
+          VERSION: ${{ steps.release_check.outputs.computed_version }}
+        run: |
+          git tag "v$VERSION"
+          git push origin HEAD:main
+          git push origin "v$VERSION"
+
+      - name: Release skipped summary
+        if: steps.release_check.outputs.should_release != 'true'
+        run: |
+          echo "ℹ️ Release skipped: ${{ steps.release_check.outputs.reason }}"
+          echo "Current version: ${{ steps.release_check.outputs.current_version }}"
+          echo "Computed version: ${{ steps.release_check.outputs.computed_version }}"
+
+  test-and-build:
+    if: startsWith(github.ref, 'refs/tags/') || inputs.version != ''
+    runs-on: ubuntu-latest
+    name: Test, Build & Compliance
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+      - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
-          node-version: "lts/*"
+          node-version: 24.x
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run linter
-        run: npm run lint
-
-      - name: Run tests
-        run: npm test
-
-      - name: Build package
-        run: npm run build
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
 
       - name: Verify build artifacts
         run: |
@@ -49,21 +139,20 @@ jobs:
 
   publish:
     needs: test-and-build
+    if: startsWith(github.ref, 'refs/tags/') || inputs.version != ''
     runs-on: ubuntu-latest
     name: Publish to npm and MCP Registry
     permissions:
-      id-token: write # Required for OIDC authentication to npm and MCP Registry
+      id-token: write
       contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+      - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
-          node-version: "lts/*"
-          registry-url: "https://registry.npmjs.org"
+          node-version: 24.x
+          registry-url: https://registry.npmjs.org
           cache: npm
 
       - name: Resolve release version
@@ -87,17 +176,15 @@ jobs:
         run: |
           npm version "$VERSION" --no-git-tag-version --allow-same-version
           node -e "const fs = require('fs'); const p = 'server.json'; const data = JSON.parse(fs.readFileSync(p, 'utf8')); data.version = process.env.VERSION; if (Array.isArray(data.packages)) { data.packages = data.packages.map((pkg) => ({ ...pkg, version: process.env.VERSION })); } fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\n');"
+          node -e "const fs = require('fs'); const p = 'mcp.json'; const data = JSON.parse(fs.readFileSync(p, 'utf8')); data.version = process.env.VERSION; fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\n');"
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build package
-        run: npm run build
+      - run: npm ci
+      - run: npm run build
 
       - name: Check npm package version
         id: npm_version_check
         env:
-          PACKAGE_NAME: "@downatthebottomofthemolehole/megalinter-mcp-server"
+          PACKAGE_NAME: '@downatthebottomofthemolehole/megalinter-mcp-server'
           VERSION: ${{ steps.release_version.outputs.value }}
         run: |
           if npm view "${PACKAGE_NAME}@${VERSION}" version >/dev/null 2>&1; then
@@ -106,11 +193,11 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Publish package to npm (Trusted Publishing)
+      - name: Publish package to npm
         if: steps.npm_version_check.outputs.exists != 'true'
-        env:
-          NPM_CONFIG_PROVENANCE: "false"
         run: npm publish --access public
+        env:
+          NPM_CONFIG_PROVENANCE: true
 
       - name: Skip npm publish (already exists)
         if: steps.npm_version_check.outputs.exists == 'true'
