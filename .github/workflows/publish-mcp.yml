@@ -61,7 +61,7 @@ jobs:
           retention-days: 30
 
       - name: Upload SARIF report
-        if: always()
+        if: always() && hashFiles('megalinter-reports/sarif-report.sarif') != ''
         uses: github/codeql-action/upload-sarif@47b3d888fe66b639e431abf22ebca059152f1eea # v3.24.5
         with:
           sarif_file: megalinter-reports/sarif-report.sarif
