@@ -71,5 +71,6 @@
   "prCreation": "all",
   "prConcurrentLimit": 3,
   "prConcurrentLimitType": "global",
-  "semanticCommits": "enabled"
+  "semanticCommits": "enabled",
+  "semanticCommitScope": "deps"
 }
