@@ -151,7 +151,7 @@ Inputs:
 
 Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 
-- `megalinter_run`
+### Run MegaLinter (`megalinter_run`)
 
 ```text
 @megalinter-ox-security run MegaLinter with:
@@ -162,7 +162,9 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 - timeoutSeconds: 1800
 ```
 
-- `megalinter_write_config`
+**Expected output**: Executes linters and reports issues found across all languages. Creates `megalinter-reports/` with JSON, SARIF, and text reports.
+
+### Create Config (`megalinter_write_config`)
 
 ```text
 @megalinter-ox-security create a MegaLinter config at .mega-linter.yml with:
@@ -171,47 +173,63 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 - flavorSuggestions: false
 ```
 
-- `megalinter_list_flavors`
+**Expected output**: Creates `.mega-linter.yml` with specified settings ready for customization.
+
+### List Flavors (`megalinter_list_flavors`)
 
 ```text
 @megalinter-ox-security list all available MegaLinter flavors
 ```
 
-- `megalinter_get_linters`
+**Expected output**: Table of flavors (all, python, javascript, go, etc.) with descriptions and use cases.
+
+### Query Linters (`megalinter_get_linters`)
 
 ```text
 @megalinter-ox-security list python security linters with autofix support
 ```
 
-- `megalinter_get_security_info`
+**Expected output**: Filtered list showing bandit, pyright, and other Python security tools with fix capabilities.
+
+### Security Categories (`megalinter_get_security_info`)
 
 ```text
 @megalinter-ox-security show MegaLinter security linter categories
 ```
 
-- `megalinter_get_reporters`
+**Expected output**: Categories like CREDENTIALS, SECRETS, VULNERABILITIES with associated linters (gitleaks, trivy, etc.).
+
+### List Reporters (`megalinter_get_reporters`)
 
 ```text
 @megalinter-ox-security list available MegaLinter reporters
 ```
 
-- `megalinter_parse_reports`
+**Expected output**: List of reporters (console, json, sarif, github-comment, etc.) with activation methods.
+
+### Parse Reports (`megalinter_parse_reports`)
 
 ```text
 @megalinter-ox-security parse the json report from megalinter-reports
 ```
 
-- `megalinter_get_issue_summary`
+**Expected output**: Structured summary with total issues, errors by linter, and file-level breakdown.
+
+### Issue Summary (`megalinter_get_issue_summary`)
 
 ```text
 @megalinter-ox-security summarise issues from megalinter-reports with severity error
 ```
 
-- `megalinter_get_security_recommendations`
+**Expected output**: Filtered view showing only error-level issues with file locations and rule IDs.
+
+### Security Recommendations (`megalinter_get_security_recommendations`)
 
 ```text
 @megalinter-ox-security generate security recommendations using megalinter-reports
 ```
+
+**Expected output**: Actionable security fixes prioritized by severity with code examples and documentation links.
 
 ## Dependencies
 
