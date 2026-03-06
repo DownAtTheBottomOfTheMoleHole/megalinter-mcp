@@ -1,28 +1,41 @@
 changelog:
   categories:
-    - title: 🎉 Features
+    - title: ":boom: Breaking Changes"
+      labels:
+        - breaking-change
+        - breaking
+    - title: ":sparkles: Features and Enhancements"
       labels:
         - feature
         - enhancement
-    - title: 🐛 Bug Fixes
+        - feat
+    - title: ":bug: Bug Fixes"
       labels:
         - bug
         - bugfix
         - fix
-    - title: 📚 Documentation
-      labels:
-        - documentation
-        - docs
-    - title: 🔧 Maintenance
-      labels:
-        - maintenance
-        - dependencies
-        - chore
-    - title: 🏗️ Infrastructure
+    - title: ":technologist: Developer Experience"
       labels:
         - ci
         - github-actions
         - workflow
+        - tooling
+        - test
+        - developer-experience
+    - title: ":memo: Documentation"
+      labels:
+        - documentation
+        - docs
+        - readme
+    - title: ":arrow_up: Dependencies"
+      labels:
+        - dependencies
+        - deps
+        - renovate
+    - title: ":wrench: Maintenance"
+      labels:
+        - maintenance
+        - chore
 
 exclude:
   labels:
