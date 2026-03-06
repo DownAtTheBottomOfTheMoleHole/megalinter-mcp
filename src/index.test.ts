@@ -41,7 +41,20 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await rm(testDir, { recursive: true, force: true });
+  // Only attempt cleanup if the temp directory was successfully created
+  if (!testDir) {
+    return;
+  }
+
+  // Ensure we only delete directories under the system temp directory
+  const resolvedTestDir = path.resolve(testDir);
+  const resolvedTmpDir = path.resolve(tmpdir());
+  if (
+    resolvedTestDir === resolvedTmpDir ||
+    resolvedTestDir.startsWith(resolvedTmpDir + path.sep)
+  ) {
+    await rm(testDir, { recursive: true, force: true });
+  }
 });
 
 describe("MCP Server Tools Extensions", () => {
