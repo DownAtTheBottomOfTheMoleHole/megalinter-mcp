@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   version-and-tag:
-    if: github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+    if: github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]' && (github.event_name != 'workflow_dispatch' || inputs.version == '')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -39,7 +39,7 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-          token: ${{ secrets.PAT_TOKEN || github.token }}
+          token: ${{ github.token }}
 
       - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
@@ -57,8 +57,13 @@ jobs:
       - name: Decide whether to release
         id: release_check
         run: |
-          VERSION="${{ steps.gitversion.outputs.semVer }}"
+          VERSION="${{ steps.gitversion.outputs.majorMinorPatch }}"
           CURRENT_VERSION="$(node -p "require('./package.json').version")"
+
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Computed version '$VERSION' is not strict SemVer (x.y.z)."
+            exit 1
+          fi
 
           echo "computed_version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
@@ -114,7 +119,13 @@ jobs:
           echo "Computed version: ${{ steps.release_check.outputs.computed_version }}"
 
   test-and-build:
-    if: startsWith(github.ref, 'refs/tags/') || inputs.version != ''
+    needs: version-and-tag
+    if: |
+      always() && (
+        (startsWith(github.ref, 'refs/tags/') && github.actor != 'github-actions[bot]') ||
+        inputs.version != '' ||
+        needs.version-and-tag.outputs.should_release == 'true'
+      )
     runs-on: ubuntu-latest
     name: Test, Build & Compliance
 
@@ -139,8 +150,16 @@ jobs:
           test -f dist/index.d.ts && echo "✅ dist/index.d.ts exists" || exit 1
 
   publish:
-    needs: test-and-build
-    if: startsWith(github.ref, 'refs/tags/') || inputs.version != ''
+    needs:
+      - version-and-tag
+      - test-and-build
+    if: |
+      always() &&
+      needs.test-and-build.result == 'success' && (
+        (startsWith(github.ref, 'refs/tags/') && github.actor != 'github-actions[bot]') ||
+        inputs.version != '' ||
+        needs.version-and-tag.outputs.should_release == 'true'
+      )
     runs-on: ubuntu-latest
     name: Publish to npm and MCP Registry
     permissions:
@@ -149,6 +168,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
@@ -160,12 +182,22 @@ jobs:
         id: release_version
         run: |
           VERSION="${{ inputs.version }}"
-          if [[ -z "$VERSION" ]]; then
+
+          if [[ -z "$VERSION" && "$GITHUB_REF_TYPE" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
           fi
 
-          if [[ "$GITHUB_REF_TYPE" != "tag" && -z "${{ inputs.version }}" ]]; then
-            echo "::error::For manual workflow runs on branches, provide the version input."
+          if [[ -z "$VERSION" && "${{ needs.version-and-tag.outputs.should_release }}" == "true" ]]; then
+            VERSION="${{ needs.version-and-tag.outputs.computed_version }}"
+          fi
+
+          if [[ -z "$VERSION" ]]; then
+            echo "::error::Unable to resolve release version from inputs, tag, or version-and-tag output."
+            exit 1
+          fi
+
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version '$VERSION' must be strict SemVer in x.y.z format."
             exit 1
           fi
 
@@ -211,8 +243,114 @@ jobs:
       - name: Authenticate to MCP Registry
         run: ./mcp-publisher login github-oidc
 
+      - name: Check MCP registry server version
+        id: mcp_version_check
+        env:
+          SERVER_NAME: io.github.DownAtTheBottomOfTheMoleHole/megalinter
+          VERSION: ${{ steps.release_version.outputs.value }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const outputPath = process.env.GITHUB_OUTPUT;
+          const serverName = process.env.SERVER_NAME;
+          const version = process.env.VERSION;
+
+          async function main() {
+            try {
+              const url = `https://registry.modelcontextprotocol.io/v0.1/servers?search=${encodeURIComponent(serverName)}`;
+              const response = await fetch(url);
+              const data = response.ok ? await response.json() : { servers: [] };
+              const servers = Array.isArray(data.servers) ? data.servers : [];
+              const exists = servers.some((entry) => {
+                const server = entry?.server;
+                return server?.name === serverName && server?.version === version;
+              });
+              fs.appendFileSync(outputPath, `exists=${exists ? 'true' : 'false'}\n`);
+            } catch {
+              fs.appendFileSync(outputPath, 'exists=false\n');
+            }
+          }
+
+          main();
+          NODE
+
       - name: Publish server to MCP Registry
+        if: steps.mcp_version_check.outputs.exists != 'true'
         run: ./mcp-publisher publish
+
+      - name: Skip MCP publish (already exists)
+        if: steps.mcp_version_check.outputs.exists == 'true'
+        run: echo "ℹ️ MCP registry version already exists; skipping MCP publish."
+
+      - name: Resolve previous release tag
+        id: previous_tag
+        env:
+          VERSION: ${{ steps.release_version.outputs.value }}
+        run: |
+          CURRENT_TAG="v$VERSION"
+          PREVIOUS_TAG="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | grep -v "^${CURRENT_TAG}$" | head -n 1 || true)"
+          echo "value=$PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate rich public release notes
+        uses: actions/github-script@v7
+        env:
+          VERSION: ${{ steps.release_version.outputs.value }}
+          PREVIOUS_TAG: ${{ steps.previous_tag.outputs.value }}
+        with:
+          script: |
+            const fs = require('node:fs');
+
+            const version = process.env.VERSION;
+            const tagName = `v${version}`;
+            const previousTag = process.env.PREVIOUS_TAG || undefined;
+            const serverName = 'io.github.DownAtTheBottomOfTheMoleHole/megalinter';
+            const packageName = '@downatthebottomofthemolehole/megalinter-mcp-server';
+
+            const response = await github.rest.repos.generateReleaseNotes({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tagName,
+              target_commitish: context.sha,
+              ...(previousTag ? { previous_tag_name: previousTag } : {}),
+            });
+
+            const generated = (response.data.body || '').trim();
+
+            const intro = [
+              `## :rocket: MegaLinter MCP Server ${tagName}`,
+              '',
+              previousTag
+                ? `Public release with improvements since ${previousTag}.`
+                : 'Public release for the MegaLinter MCP Server.',
+              '',
+              '### :rocket: Quick Start',
+              '```bash',
+              `npx -y ${packageName}@${version}`,
+              '```',
+              '',
+              '### :robot: VS Code Copilot Chat Example',
+              '```text',
+              '@megalinter-ox-security run MegaLinter with:',
+              '- workingDirectory: ${workspaceFolder}',
+              '- path: src',
+              '- flavor: javascript',
+              '- timeoutSeconds: 600',
+              '```',
+              '',
+              '### :package: Distribution',
+              `- npm package: \`${packageName}@${version}\``,
+              `- MCP server name: \`${serverName}\``,
+              `- MCP registry search: https://registry.modelcontextprotocol.io/v0.1/servers?search=${encodeURIComponent(serverName)}`,
+            ];
+
+            const body = [
+              intro.join('\n'),
+              '',
+              generated || '- No categorized changes were generated for this release.',
+            ].join('\n');
+
+            fs.writeFileSync('release-notes.md', body, 'utf8');
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v0.1.15
@@ -222,7 +360,8 @@ jobs:
           draft: false
           prerelease: ${{ contains(steps.release_version.outputs.value, 'rc') || contains(steps.release_version.outputs.value, 'hotfix') }}
           files: dist/**
-          generate_release_notes: true
+          body_path: release-notes.md
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
