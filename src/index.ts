@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { pathToFileURL } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -591,7 +592,7 @@ async function handleWriteConfigTool(args: ToolArgs) {
   };
 }
 
-function handleGetLintersTool(args: ToolArgs) {
+export function handleGetLintersTool(args: ToolArgs) {
   const language = readString(args, "language");
   const securityOnly = readBool(args, "securityOnly", false);
   const autoFixOnly = readBool(args, "autoFixOnly", false);
@@ -695,9 +696,21 @@ function handleGetReportersTool() {
   };
 }
 
-async function handleParseReportsTool(args: ToolArgs) {
+export async function handleParseReportsTool(args: ToolArgs) {
   const reportsPath = readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH;
   const reportType = readString(args, "reportType") ?? "json";
+
+  if (reportType !== "json" && reportType !== "sarif") {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Unsupported report type: ${reportType}. Supported types: json, sarif`,
+        },
+      ],
+      isError: true,
+    };
+  }
 
   try {
     const reportFile = path.join(
@@ -706,31 +719,15 @@ async function handleParseReportsTool(args: ToolArgs) {
     );
     const { readFile } = await import("node:fs/promises");
 
-    let report: unknown;
     const fileContent = await readFile(reportFile, "utf-8");
-
-    if (reportType === "json") {
-      report = JSON.parse(fileContent);
-    } else if (reportType === "sarif") {
-      report = JSON.parse(fileContent);
-    } else {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Unsupported report type: ${reportType}. Supported types: json, sarif`,
-          },
-        ],
-        isError: true,
-      };
-    }
+    const report: unknown = JSON.parse(fileContent);
 
     const summary = JSON.stringify(report, null, 2);
     return {
       content: [
         {
           type: "text",
-          text: `# Parsed ${reportType.toUpperCase()} Report\n\n\`\`\`json\n${summary}\n\`\`\``,
+          text: `# Parsed ${reportType.toUpperCase()} Report\n\n\`\`\`${reportType}\n${summary}\n\`\`\``,
         },
       ],
     };
@@ -748,7 +745,7 @@ async function handleParseReportsTool(args: ToolArgs) {
   }
 }
 
-async function handleGetIssueSummaryTool(args: ToolArgs) {
+export async function handleGetIssueSummaryTool(args: ToolArgs) {
   const reportsPath = readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH;
   const severityFilter = readString(args, "severityFilter");
   const linterFilter = readString(args, "linterFilter");
@@ -761,8 +758,20 @@ async function handleGetIssueSummaryTool(args: ToolArgs) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const report = JSON.parse(fileContent) as ReportMetadata;
 
+    const totalErrors = report.summary?.total_badges_errors ?? 0;
+    const totalWarnings = report.summary?.total_badges_warnings ?? 0;
+
+    let filteredTotalIssues = totalErrors + totalWarnings;
+    if (severityFilter === "error") {
+      filteredTotalIssues = totalErrors;
+    } else if (severityFilter === "warning") {
+      filteredTotalIssues = totalWarnings;
+    } else if (severityFilter === "info") {
+      filteredTotalIssues = 0;
+    }
+
     const summary: IssueSummary = {
-      totalIssues: report.summary?.total_badges_errors ?? 0,
+      totalIssues: filteredTotalIssues,
       bySeverity: {},
       byLinter: {},
       byCategory: {},
@@ -780,17 +789,32 @@ async function handleGetIssueSummaryTool(args: ToolArgs) {
       }
     }
 
+    const allLinterEntries = Object.entries(summary.byLinter);
+    const filteredLinterEntries = linterFilter
+      ? allLinterEntries.filter(([linterName]) =>
+          linterName.toLowerCase().includes(linterFilter.toLowerCase()),
+        )
+      : allLinterEntries;
+
     let responseText = "# Issue Summary Report\n\n";
     responseText += `**Total Issues**: ${summary.totalIssues}\n\n`;
     responseText += "## By Linter (Runs)\n";
-    responseText +=
-      Object.entries(summary.byLinter)
+    if (filteredLinterEntries.length > 0) {
+      responseText += filteredLinterEntries
         .map(([linter, count]) => `- ${linter}: ${count} runs`)
-        .join("\n") || "No linter data available";
+        .join("\n");
+    } else {
+      responseText += linterFilter
+        ? "No linter data available for the selected filters"
+        : "No linter data available";
+    }
 
     if (severityFilter || linterFilter) {
       responseText += "\n\n**Filters Applied**:\n";
-      if (severityFilter) responseText += `- Severity: ${severityFilter}\n`;
+      if (severityFilter) {
+        responseText +=
+          `- Severity: ${severityFilter} (applies to total issue count)\n`;
+      }
       if (linterFilter) responseText += `- Linter: ${linterFilter}\n`;
     }
 
@@ -1237,7 +1261,13 @@ async function main() {
   await server.connect(transport);
 }
 
-main().catch((error) => {
-  console.error("Fatal MCP server error:", error);
-  process.exit(1);
-});
+const isMainModule =
+  typeof process.argv[1] === "string" &&
+  pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
+
+if (isMainModule) {
+  main().catch((error) => {
+    console.error("Fatal MCP server error:", error);
+    process.exit(1);
+  });
+}

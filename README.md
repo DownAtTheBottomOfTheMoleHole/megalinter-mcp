@@ -197,7 +197,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 @megalinter-ox-security show MegaLinter security linter categories
 ```
 
-**Expected output**: Categories like CREDENTIALS, SECRETS, VULNERABILITIES with associated linters (gitleaks, trivy, etc.).
+**Expected output**: Security categories (for example, `sast`, `secrets`, `supply-chain`, `container`, `infrastructure`) with associated linters (gitleaks, trivy, etc.).
 
 ### List Reporters (`megalinter_get_reporters`)
 
@@ -213,7 +213,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 @megalinter-ox-security parse the json report from megalinter-reports
 ```
 
-**Expected output**: Structured summary with total issues, errors by linter, and file-level breakdown.
+**Expected output**: Parsed MegaLinter JSON or SARIF report content as structured data (raw report payload).
 
 ### Issue Summary (`megalinter_get_issue_summary`)
 
@@ -221,7 +221,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 @megalinter-ox-security summarise issues from megalinter-reports with severity error
 ```
 
-**Expected output**: Filtered view showing only error-level issues with file locations and rule IDs.
+**Expected output**: Summary of issues filtered by severity and linter inputs, aggregated by linter with totals and run counts.
 
 ### Security Recommendations (`megalinter_get_security_recommendations`)
 

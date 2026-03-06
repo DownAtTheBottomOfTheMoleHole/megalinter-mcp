@@ -82,7 +82,7 @@ Expected: Full run executes and writes reports to `megalinter-reports`.
 ### Test 5: Discover language and security linters
 
 ```text
-@megalinter-ox-security list javascript security linters with autofix support
+@megalinter-ox-security list security linters with autofix support
 ```
 
 Expected: JSON output containing a filtered linter list where `isSecurity=true` and `isAutoFix=true`.
