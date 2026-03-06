@@ -72,6 +72,40 @@ type ReporterInfo = {
   requiresCI?: string;
 };
 
+type Issue = {
+  file?: string;
+  line?: number;
+  column?: number;
+  rule?: string;
+  message?: string;
+  severity?: "error" | "warning" | "info";
+  linter?: string;
+  fix?: string;
+};
+
+type IssueSummary = {
+  totalIssues: number;
+  bySeverity: Record<string, number>;
+  byLinter: Record<string, number>;
+  byCategory: Record<string, number>;
+  criticalSecurity: Issue[];
+  topIssues: Issue[];
+};
+
+type ReportMetadata = {
+  timestamp?: string;
+  linters_applied?: string[];
+  summary?: {
+    total_badges_errors?: number;
+    total_badges_warnings?: number;
+    status?: string;
+  };
+  linter_runs?: Array<{
+    linter_name?: string;
+    status?: string;
+  }>;
+};
+
 // Comprehensive linter metadata from MegaLinter documentation
 const LINTER_CATALOG: Record<string, LinterInfo> = {
   // SAST Linters
@@ -646,6 +680,204 @@ function handleGetReportersTool() {
   };
 }
 
+async function handleParseReportsTool(args: ToolArgs) {
+  const reportsPath = readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH;
+  const reportType = readString(args, "reportType") ?? "json";
+
+  try {
+    const reportFile = path.join(reportsPath, `megalinter-report.${reportType}`);
+    const { readFile } = await import("node:fs/promises");
+
+    let report: unknown;
+    const fileContent = await readFile(reportFile, "utf-8");
+
+    if (reportType === "json") {
+      report = JSON.parse(fileContent);
+    } else if (reportType === "sarif") {
+      report = JSON.parse(fileContent);
+    } else {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Unsupported report type: ${reportType}. Supported types: json, sarif`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const summary = JSON.stringify(report, null, 2);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `# Parsed ${reportType.toUpperCase()} Report\n\n\`\`\`json\n${summary}\n\`\`\``,
+        },
+      ],
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Error parsing reports: ${errorMessage}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+async function handleGetIssueSummaryTool(args: ToolArgs) {
+  const reportsPath = readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH;
+  const severityFilter = readString(args, "severityFilter");
+  const linterFilter = readString(args, "linterFilter");
+
+  try {
+    const reportFile = path.join(reportsPath, "megalinter-report.json");
+    const { readFile } = await import("node:fs/promises");
+
+    const fileContent = await readFile(reportFile, "utf-8");
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const report = JSON.parse(fileContent) as ReportMetadata;
+
+    const summary: IssueSummary = {
+      totalIssues: report.summary?.total_badges_errors ?? 0,
+      bySeverity: {},
+      byLinter: {},
+      byCategory: {},
+      criticalSecurity: [],
+      topIssues: [],
+    };
+
+    // Aggregate linter statistics
+    if (Array.isArray(report.linter_runs)) {
+      for (const run of report.linter_runs) {
+        if (run.linter_name) {
+          summary.byLinter[run.linter_name] =
+            (summary.byLinter[run.linter_name] ?? 0) + 1;
+        }
+      }
+    }
+
+    let responseText = "# Issue Summary Report\n\n";
+    responseText += `**Total Issues**: ${summary.totalIssues}\n\n`;
+    responseText += "## By Linter\n";
+    responseText +=
+      Object.entries(summary.byLinter)
+        .map(([linter, count]) => `- ${linter}: ${count} issues`)
+        .join("\n") || "No linter data available";
+
+    if (severityFilter || linterFilter) {
+      responseText += "\n\n**Filters Applied**:\n";
+      if (severityFilter) responseText += `- Severity: ${severityFilter}\n`;
+      if (linterFilter) responseText += `- Linter: ${linterFilter}\n`;
+    }
+
+    return {
+      content: [{ type: "text", text: responseText }],
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Error analyzing issues: ${errorMessage}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+async function handleGetSecurityRecommendationsTool(args: ToolArgs) {
+  const reportsPath = readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH;
+
+  try {
+    const reportFile = path.join(reportsPath, "megalinter-report.json");
+    const { readFile } = await import("node:fs/promises");
+
+    const fileContent = await readFile(reportFile, "utf-8");
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const report = JSON.parse(fileContent) as ReportMetadata;
+
+    let responseText = "# Security-Focused Recommendations\n\n";
+
+    // Identify security linters
+    const securityLinters = report.linter_runs?.filter((run) => {
+      const name = run.linter_name?.toLowerCase() ?? "";
+      return (
+        name.includes("semgrep") ||
+        name.includes("bandit") ||
+        name.includes("gitleaks") ||
+        name.includes("devskim") ||
+        name.includes("trivy") ||
+        name.includes("hadolint") ||
+        name.includes("checkov") ||
+        name.includes("tfsec")
+      );
+    }) ?? [];
+
+    if (securityLinters.length > 0) {
+      responseText += "## Active Security Linters\n";
+      responseText +=
+        securityLinters.map((run) => `- ${run.linter_name}`).join("\n") +
+        "\n\n";
+    }
+
+    responseText += "## Recommended Security Practices\n\n";
+    responseText += "1. **SAST (Static Application Security Testing)**\n";
+    responseText +=
+      "   - Use Semgrep for comprehensive multi-language pattern detection\n";
+    responseText +=
+      "   - Use Bandit for Python-specific security analysis\n";
+    responseText += "   - Use DevSkim for general code security patterns\n\n";
+
+    responseText += "2. **Secrets Detection**\n";
+    responseText += "   - Enable Gitleaks to prevent credential leaks\n";
+    responseText +=
+      "   - Configure pre-commit hooks to validate before push\n\n";
+
+    responseText += "3. **Container & Infrastructure Security**\n";
+    responseText += "   - Use Hadolint for Dockerfile security\n";
+    responseText +=
+      "   - Use Trivy for container image vulnerability scanning\n";
+    responseText +=
+      "   - Use Checkov or Tfsec for Infrastructure as Code security\n\n";
+
+    responseText += "4. **Supply Chain Security**\n";
+    responseText +=
+      "   - Verify dependency versions with npm audit or similar tools\n";
+    responseText += "   - Review security advisories regularly\n\n";
+
+    responseText += "## Next Steps\n";
+    responseText += "1. Review flagged security issues in priority order\n";
+    responseText += "2. Configure auto-fix linters where available\n";
+    responseText +=
+      "3. Integrate security scanning into CI/CD pipeline\n";
+    responseText +=
+      "4. Enable PR comments to catch issues during review\n";
+
+    return {
+      content: [{ type: "text", text: responseText }],
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Error generating recommendations: ${errorMessage}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
@@ -836,6 +1068,72 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           additionalProperties: false,
         },
       },
+      {
+        name: "megalinter_parse_reports",
+        description:
+          "Parse MegaLinter JSON or SARIF reports from the reports directory. Returns structured report data for analysis.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            reportsPath: {
+              type: "string",
+              description:
+                "Path to the reports directory. Defaults to megalinter-reports.",
+            },
+            reportType: {
+              type: "string",
+              enum: ["json", "sarif"],
+              description:
+                "Type of report to parse. Defaults to json.",
+              default: "json",
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "megalinter_get_issue_summary",
+        description:
+          "Analyze and summarize issues from MegaLinter reports by severity, linter, and category. Enables filtering and targeted remediation.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            reportsPath: {
+              type: "string",
+              description:
+                "Path to the reports directory. Defaults to megalinter-reports.",
+            },
+            severityFilter: {
+              type: "string",
+              enum: ["error", "warning", "info"],
+              description:
+                "Filter issues by severity level.",
+            },
+            linterFilter: {
+              type: "string",
+              description:
+                "Filter issues by specific linter name.",
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "megalinter_get_security_recommendations",
+        description:
+          "Generate security-focused recommendations based on active linters and common threat categories (SAST, secrets, container, infrastructure).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            reportsPath: {
+              type: "string",
+              description:
+                "Path to the reports directory. Defaults to megalinter-reports.",
+            },
+          },
+          additionalProperties: false,
+        },
+      },
     ],
   };
 });
@@ -872,6 +1170,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (request.params.name === "megalinter_get_reporters") {
     return handleGetReportersTool();
+  }
+
+  if (request.params.name === "megalinter_parse_reports") {
+    return handleParseReportsTool(args);
+  }
+
+  if (request.params.name === "megalinter_get_issue_summary") {
+    return handleGetIssueSummaryTool(args);
+  }
+
+  if (request.params.name === "megalinter_get_security_recommendations") {
+    return handleGetSecurityRecommendationsTool(args);
   }
 
   return {
