@@ -584,7 +584,7 @@ async function handleWriteConfigTool(args: ToolArgs) {
   };
 }
 
-function handleGetLintersToolHandler(args: ToolArgs) {
+function handleGetLintersTool(args: ToolArgs) {
   const language = readString(args, "language");
   const securityOnly = readBool(args, "securityOnly", false);
   const autoFixOnly = readBool(args, "autoFixOnly", false);
@@ -806,20 +806,27 @@ async function handleGetSecurityRecommendationsTool(args: ToolArgs) {
 
     let responseText = "# Security-Focused Recommendations\n\n";
 
-    // Identify security linters
-    const securityLinters = report.linter_runs?.filter((run) => {
-      const name = run.linter_name?.toLowerCase() ?? "";
-      return (
-        name.includes("semgrep") ||
-        name.includes("bandit") ||
-        name.includes("gitleaks") ||
-        name.includes("devskim") ||
-        name.includes("trivy") ||
-        name.includes("hadolint") ||
-        name.includes("checkov") ||
-        name.includes("tfsec")
-      );
-    }) ?? [];
+    // Build security linter identifiers from LINTER_CATALOG so detection
+    // stays in sync with the catalog as new linters are added.
+    const catalogSecurityNames = new Set(
+      Object.entries(LINTER_CATALOG)
+        .filter(([, info]) => info.isSecurity)
+        .flatMap(([id, info]) => [id.toLowerCase(), info.name.toLowerCase()]),
+    );
+    // Pre-convert to array once to avoid repeated Set-to-array conversion inside the filter.
+    const catalogSecurityNamesArray = [...catalogSecurityNames];
+
+    // Identify security linters active in the report using catalog-derived identifiers
+    const securityLinters =
+      report.linter_runs?.filter((run) => {
+        const name = run.linter_name?.toLowerCase() ?? "";
+        return (
+          catalogSecurityNames.has(name) ||
+          catalogSecurityNamesArray.some((identifier) =>
+            name.includes(identifier),
+          )
+        );
+      }) ?? [];
 
     if (securityLinters.length > 0) {
       responseText += "## Active Security Linters\n";
@@ -828,36 +835,51 @@ async function handleGetSecurityRecommendationsTool(args: ToolArgs) {
         "\n\n";
     }
 
+    // Build recommendations from LINTER_CATALOG grouped by security category
+    // so this section automatically reflects the full catalog.
+    const catalogByCategory = Object.entries(LINTER_CATALOG)
+      .filter(([, info]) => info.isSecurity)
+      .reduce(
+        (acc, [, info]) => {
+          for (const cat of info.securityCategories ?? []) {
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push(info);
+          }
+          return acc;
+        },
+        {} as Record<string, LinterInfo[]>,
+      );
+
+    const categoryLabels: Record<string, string> = {
+      sast: "SAST (Static Application Security Testing)",
+      secrets: "Secrets Detection",
+      container: "Container Security",
+      infrastructure: "Infrastructure Security",
+      "supply-chain": "Supply Chain Security",
+    };
+
     responseText += "## Recommended Security Practices\n\n";
-    responseText += "1. **SAST (Static Application Security Testing)**\n";
-    responseText +=
-      "   - Use Semgrep for comprehensive multi-language pattern detection\n";
-    responseText +=
-      "   - Use Bandit for Python-specific security analysis\n";
-    responseText += "   - Use DevSkim for general code security patterns\n\n";
-
-    responseText += "2. **Secrets Detection**\n";
-    responseText += "   - Enable Gitleaks to prevent credential leaks\n";
-    responseText +=
-      "   - Configure pre-commit hooks to validate before push\n\n";
-
-    responseText += "3. **Container & Infrastructure Security**\n";
-    responseText += "   - Use Hadolint for Dockerfile security\n";
-    responseText +=
-      "   - Use Trivy for container image vulnerability scanning\n";
-    responseText +=
-      "   - Use Checkov or Tfsec for Infrastructure as Code security\n\n";
-
-    responseText += "4. **Supply Chain Security**\n";
-    responseText +=
-      "   - Verify dependency versions with npm audit or similar tools\n";
-    responseText += "   - Review security advisories regularly\n\n";
+    let sectionNum = 1;
+    for (const [cat, linters] of Object.entries(catalogByCategory)) {
+      // Fall back to a title-cased rendering for any category not in the label map.
+      const label =
+        categoryLabels[cat] ??
+        cat
+          .split("-")
+          .map((w) => w[0].toUpperCase() + w.slice(1))
+          .join(" ");
+      responseText += `${sectionNum}. **${label}**\n`;
+      for (const linter of linters) {
+        responseText += `   - ${linter.name}: ${linter.description}${linter.isAutoFix ? " [AutoFix]" : ""}\n`;
+      }
+      responseText += "\n";
+      sectionNum++;
+    }
 
     responseText += "## Next Steps\n";
     responseText += "1. Review flagged security issues in priority order\n";
     responseText += "2. Configure auto-fix linters where available\n";
-    responseText +=
-      "3. Integrate security scanning into CI/CD pipeline\n";
+    responseText += "3. Integrate security scanning into CI/CD pipeline\n";
     responseText +=
       "4. Enable PR comments to catch issues during review\n";
 
@@ -1161,7 +1183,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   if (request.params.name === "megalinter_get_linters") {
-    return handleGetLintersToolHandler(args);
+    return handleGetLintersTool(args);
   }
 
   if (request.params.name === "megalinter_get_security_info") {
