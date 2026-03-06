@@ -1,9 +1,7 @@
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Mock test data for report parsing
 const mockReport = [
@@ -39,12 +37,11 @@ const mockReport = [
 let testDir: string;
 
 beforeAll(async () => {
-  testDir = path.join(__dirname, ".test-reports");
-  await mkdir(testDir, { recursive: true });
+  testDir = await mkdtemp(path.join(tmpdir(), "megalinter-mcp-test-"));
 });
 
 afterAll(async () => {
-  // Cleanup handled by test framework
+  await rm(testDir, { recursive: true, force: true });
 });
 
 describe("MCP Server Tools Extensions", () => {

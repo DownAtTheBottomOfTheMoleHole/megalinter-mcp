@@ -22,6 +22,7 @@ megalinter-reports/
 # Test artifacts
 coverage/
 .nyc_output/
+src/.test-reports/
 
 # Temporary files
 .tmp*
