@@ -140,6 +140,8 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - name: Check documentation links
+        run: npx --yes markdown-link-check -c .markdown-link-check.json README.md docs/*.md -q
       - run: npm run lint
       - run: npm test
       - run: npm run build
@@ -359,7 +361,6 @@ jobs:
           name: v${{ steps.release_version.outputs.value }}
           draft: false
           prerelease: ${{ contains(steps.release_version.outputs.value, 'rc') || contains(steps.release_version.outputs.value, 'hotfix') }}
-          files: dist/**
           body_path: release-notes.md
           generate_release_notes: false
         env:

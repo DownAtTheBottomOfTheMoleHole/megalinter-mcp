@@ -79,6 +79,56 @@ Expected: Tool returns command output with exit code and stdout/stderr sections.
 
 Expected: Full run executes and writes reports to `megalinter-reports`.
 
+### Test 5: Discover language and security linters
+
+```text
+@megalinter-ox-security list security linters with autofix support
+```
+
+Expected: JSON output containing a filtered linter list where `isSecurity=true` and `isAutoFix=true`.
+
+### Test 6: Inspect security coverage categories
+
+```text
+@megalinter-ox-security show megalinter security linter categories
+```
+
+Expected: Grouped sections for categories such as SAST, secrets, supply chain, container, and infrastructure.
+
+### Test 7: List available reporters
+
+```text
+@megalinter-ox-security list available megalinter reporters
+```
+
+Expected: Reporter list including IDs, descriptions, enablement state, and CI requirements where applicable.
+
+### Test 8: Parse generated report files
+
+```text
+@megalinter-ox-security parse the json report from megalinter-reports
+```
+
+Expected: Parsed JSON report content from `megalinter-reports/megalinter-report.json`.
+
+Note: Run Test 4 first so reports exist.
+
+### Test 9: Summarise and filter issues
+
+```text
+@megalinter-ox-security summarise issues from megalinter-reports with severity error
+```
+
+Expected: A summary section with total issues and linter breakdown, with the requested filter listed.
+
+### Test 10: Generate security recommendations
+
+```text
+@megalinter-ox-security generate security recommendations using megalinter-reports
+```
+
+Expected: Security-focused recommendations and next-step guidance based on detected security linters.
+
 ## Debugging
 
 ### VS Code debugger
