@@ -26,7 +26,7 @@ This document describes how to configure automated publishing to npm and the MCP
 
 If you previously used token-based publishing, remove `NPM_TOKEN` from repository secrets.
 
-1. Go to your [GitHub repository settings](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/settings/secrets/actions).
+1. Go to your repository secrets settings (see [GitHub Actions secrets documentation](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions)).
 2. Delete the `NPM_TOKEN` secret if it exists.
 
 ### Step 3: Verify configuration

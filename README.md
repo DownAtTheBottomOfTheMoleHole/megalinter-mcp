@@ -147,6 +147,72 @@ Inputs:
 
 - `reportsPath` (string, optional): Report directory path. Default: `megalinter-reports`.
 
+## Prompt Cookbook
+
+Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
+
+- `megalinter_run`
+
+```text
+@megalinter-ox-security run MegaLinter with:
+- workingDirectory: ${workspaceFolder}
+- path: .
+- flavor: all
+- reportsPath: megalinter-reports
+- timeoutSeconds: 1800
+```
+
+- `megalinter_write_config`
+
+```text
+@megalinter-ox-security create a MegaLinter config at .mega-linter.yml with:
+- applyFixes: none
+- showElapsedTime: true
+- flavorSuggestions: false
+```
+
+- `megalinter_list_flavors`
+
+```text
+@megalinter-ox-security list all available MegaLinter flavors
+```
+
+- `megalinter_get_linters`
+
+```text
+@megalinter-ox-security list python security linters with autofix support
+```
+
+- `megalinter_get_security_info`
+
+```text
+@megalinter-ox-security show MegaLinter security linter categories
+```
+
+- `megalinter_get_reporters`
+
+```text
+@megalinter-ox-security list available MegaLinter reporters
+```
+
+- `megalinter_parse_reports`
+
+```text
+@megalinter-ox-security parse the json report from megalinter-reports
+```
+
+- `megalinter_get_issue_summary`
+
+```text
+@megalinter-ox-security summarise issues from megalinter-reports with severity error
+```
+
+- `megalinter_get_security_recommendations`
+
+```text
+@megalinter-ox-security generate security recommendations using megalinter-reports
+```
+
 ## Dependencies
 
 ### System Dependencies
@@ -334,7 +400,7 @@ Quick validation prompt in Copilot Chat:
 
 - [MegaLinter Azure DevOps Extension](https://github.com/downatthebottomofthemolehole/megalinter-ado) — ADO task by the same author (also sanctioned by Ox Security)
 - GitHub Actions: Use MegaLinter's official [GitHub Action](https://github.com/marketplace/actions/megalinter)
-- GitLab CI/CD: See [MegaLinter GitLab integration docs](https://megalinter.io/latest/installation/#gitlab-ci)
+- GitLab CI/CD: See [MegaLinter GitLab integration docs](https://github.com/oxsecurity/megalinter/blob/main/docs/install-gitlab.md)
 - Jenkins, CircleCI, and others: Run MegaLinter via Docker in any CI/CD pipeline
 
 ### Model Context Protocol
