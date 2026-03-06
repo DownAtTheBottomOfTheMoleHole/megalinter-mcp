@@ -41,7 +41,7 @@
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "docs:links": "npx --yes markdown-link-check README.md docs/*.md"
+    "docs:links": "npx --yes markdown-link-check -c .markdown-link-check.json README.md docs/*.md"
   },
   "engines": {
     "node": ">=24.0.0"
