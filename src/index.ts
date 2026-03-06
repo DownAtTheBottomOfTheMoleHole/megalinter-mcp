@@ -53,6 +53,276 @@ type ProcessResult = {
   timedOut: boolean;
 };
 
+type LinterInfo = {
+  name: string;
+  language: string;
+  category: "lint" | "format" | "security" | "quality";
+  description: string;
+  isSecurity: boolean;
+  isAutoFix: boolean;
+  securityCategories?: ("sast" | "secrets" | "supply-chain" | "container" | "infrastructure")[];
+};
+
+type ReporterInfo = {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  outputFormat?: string;
+  requiresCI?: string;
+};
+
+// Comprehensive linter metadata from MegaLinter documentation
+const LINTER_CATALOG: Record<string, LinterInfo> = {
+  // SAST Linters
+  REPOSITORY_SEMGREP: {
+    name: "Semgrep",
+    language: "multi",
+    category: "security",
+    description: "Static analysis engine for finding bugs, security issues, and antipatterns",
+    isSecurity: true,
+    isAutoFix: true,
+    securityCategories: ["sast"],
+  },
+  PYTHON_BANDIT: {
+    name: "Bandit",
+    language: "python",
+    category: "security",
+    description: "Security issue scanner for Python code",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["sast"],
+  },
+  REPOSITORY_DEVSKIM: {
+    name: "DevSkim",
+    language: "multi",
+    category: "security",
+    description: "Security focused static analysis tool",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["sast"],
+  },
+  // Secrets Detection
+  REPOSITORY_GITLEAKS: {
+    name: "Gitleaks",
+    language: "repository",
+    category: "security",
+    description: "Scans repositories for secrets like credentials",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["secrets"],
+  },
+  REPOSITORY_SECRETLINT: {
+    name: "Secretlint",
+    language: "repository",
+    category: "security",
+    description: "Linter to find and prevent passwords and other secrets",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["secrets"],
+  },
+  REPOSITORY_TRUFFLEHOG: {
+    name: "Trufflehog",
+    language: "repository",
+    category: "security",
+    description: "Finds and verifies credentials",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["secrets"],
+  },
+  // Supply Chain & Vulnerability Scanning
+  REPOSITORY_TRIVY: {
+    name: "Trivy",
+    language: "repository",
+    category: "security",
+    description: "Vulnerability scanner for dependencies and container images",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["supply-chain", "container"],
+  },
+  REPOSITORY_GRYPE: {
+    name: "Grype",
+    language: "repository",
+    category: "security",
+    description: "Container/artifact vulnerability scanner",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["supply-chain", "container"],
+  },
+  // Container Security
+  DOCKERFILE_HADOLINT: {
+    name: "Hadolint",
+    language: "dockerfile",
+    category: "security",
+    description: "Linter for Dockerfile best practices and security",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["container"],
+  },
+  KUBERNETES_KUBESCAPE: {
+    name: "Kubescape",
+    language: "kubernetes",
+    category: "security",
+    description: "Kubernetes security posture management tool",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["infrastructure"],
+  },
+  // Infrastructure as Code Security
+  TERRAFORM_TFLINT: {
+    name: "TFLint",
+    language: "terraform",
+    category: "security",
+    description: "Terraform linter with security checks",
+    isSecurity: true,
+    isAutoFix: true,
+    securityCategories: ["infrastructure"],
+  },
+  TERRAFORM_TERRASCAN: {
+    name: "Terrascan",
+    language: "terraform",
+    category: "security",
+    description: "Infrastructure-as-code security scanning",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["infrastructure"],
+  },
+  ANSIBLE_ANSIBLE_LINT: {
+    name: "Ansible-lint",
+    language: "ansible",
+    category: "security",
+    description: "Ansible playbook linter with security policies",
+    isSecurity: true,
+    isAutoFix: true,
+    securityCategories: ["infrastructure"],
+  },
+  CLOUDFORMATION_CFN_LINT: {
+    name: "cfn-lint",
+    language: "cloudformation",
+    category: "security",
+    description: "CloudFormation linter with security checks",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["infrastructure"],
+  },
+  REPOSITORY_CHECKOV: {
+    name: "Checkov",
+    language: "infrastructure",
+    category: "security",
+    description: "Infrastructure-as-code security scanning framework",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["infrastructure", "supply-chain"],
+  },
+  REPOSITORY_KICS: {
+    name: "KICS",
+    language: "infrastructure",
+    category: "security",
+    description: "Infrastructure configuration secrets scanning",
+    isSecurity: true,
+    isAutoFix: false,
+    securityCategories: ["infrastructure"],
+  },
+  // General Linters
+  JAVASCRIPT_ESLINT: {
+    name: "ESLint",
+    language: "javascript/typescript",
+    category: "lint",
+    description: "Find and fix problems in JavaScript code",
+    isSecurity: false,
+    isAutoFix: true,
+  },
+  PYTHON_PYLINT: {
+    name: "Pylint",
+    language: "python",
+    category: "lint",
+    description: "Analyse Python source code looking for bugs",
+    isSecurity: false,
+    isAutoFix: false,
+  },
+  RUST_CLIPPY: {
+    name: "Clippy",
+    language: "rust",
+    category: "lint",
+    description: "Rust linter catching common mistakes",
+    isSecurity: false,
+    isAutoFix: true,
+  },
+};
+
+const REPORTERS: ReporterInfo[] = [
+  {
+    id: "text",
+    name: "Text Files",
+    description: "Log files by linter with fix suggestions",
+    enabled: true,
+    outputFormat: "text",
+  },
+  {
+    id: "sarif",
+    name: "SARIF",
+    description: "Aggregated SARIF output for IDE integration",
+    enabled: false,
+    outputFormat: "sarif",
+  },
+  {
+    id: "json",
+    name: "JSON Report",
+    description: "Structured JSON report for programmatic access",
+    enabled: false,
+    outputFormat: "json",
+  },
+  {
+    id: "markdown",
+    name: "Markdown Summary",
+    description: "Markdown formatted summary report",
+    enabled: false,
+    outputFormat: "markdown",
+  },
+  {
+    id: "github-pr",
+    name: "GitHub Pull Request Comments",
+    description: "Summary comment on GitHub PRs",
+    enabled: true,
+    requiresCI: "github",
+  },
+  {
+    id: "gitlab-mr",
+    name: "GitLab Merge Request Comments",
+    description: "Summary comment on GitLab MRs",
+    enabled: true,
+    requiresCI: "gitlab",
+  },
+  {
+    id: "azure-pr",
+    name: "Azure Pipelines PR Comments",
+    description: "Summary comment on Azure PRs",
+    enabled: true,
+    requiresCI: "azure",
+  },
+  {
+    id: "github-status",
+    name: "GitHub Status Checks",
+    description: "Status check per linter on GitHub",
+    enabled: true,
+    requiresCI: "github",
+  },
+  {
+    id: "console",
+    name: "Console Output",
+    description: "Execution logs with summary table",
+    enabled: true,
+    outputFormat: "console",
+  },
+  {
+    id: "tap",
+    name: "TAP (Test Anything Protocol)",
+    description: "TAP formatted output files",
+    enabled: true,
+    outputFormat: "tap",
+  },
+];
+
 const server = new Server(
   {
     name: "megalinter-ox-mcp-server",
@@ -280,6 +550,102 @@ async function handleWriteConfigTool(args: ToolArgs) {
   };
 }
 
+function handleGetLintersToolHandler(args: ToolArgs) {
+  const language = readString(args, "language");
+  const securityOnly = readBool(args, "securityOnly", false);
+  const autoFixOnly = readBool(args, "autoFixOnly", false);
+
+  let filtered = Object.entries(LINTER_CATALOG);
+
+  if (language) {
+    filtered = filtered.filter(([, info]) =>
+      info.language.toLowerCase().includes(language.toLowerCase()),
+    );
+  }
+
+  if (securityOnly) {
+    filtered = filtered.filter(([, info]) => info.isSecurity);
+  }
+
+  if (autoFixOnly) {
+    filtered = filtered.filter(([, info]) => info.isAutoFix);
+  }
+
+  const result = filtered.map(([id, info]) => ({
+    id,
+    ...info,
+  }));
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(result, null, 2),
+      },
+    ],
+  };
+}
+
+function handleGetSecurityInfoTool() {
+  const securityLinters = Object.entries(LINTER_CATALOG)
+    .filter(([, info]) => info.isSecurity)
+    .reduce(
+      (acc, [id, info]) => {
+        const categories = info.securityCategories ?? [];
+        for (const category of categories) {
+          if (!acc[category]) {
+            acc[category] = [];
+          }
+          acc[category].push({
+            id,
+            name: info.name,
+            description: info.description,
+            isAutoFix: info.isAutoFix,
+          });
+        }
+        return acc;
+      },
+      {} as Record<string, Array<{ id: string; name: string; description: string; isAutoFix: boolean }>>,
+    );
+
+  const text =
+    `# Security Linters Available in MegaLinter\n\n` +
+    Object.entries(securityLinters)
+      .map(([category, linters]) => {
+        const categoryName = category
+          .split("-")
+          .map((w) => w[0].toUpperCase() + w.slice(1))
+          .join(" ");
+        return (
+          `## ${categoryName} (${linters.length} linters)\n` +
+          linters
+            .map(
+              (l) =>
+                `- **${l.name}** (\`${l.id}\`): ${l.description}${l.isAutoFix ? " [AutoFix]" : ""}`,
+            )
+            .join("\n")
+        );
+      })
+      .join("\n\n");
+
+  return {
+    content: [{ type: "text", text }],
+  };
+}
+
+function handleGetReportersTool() {
+  const text =
+    "# Available MegaLinter Reporters\n\n" +
+    REPORTERS.map(
+      (r) =>
+        `- **${r.name}** (\`${r.id}\`): ${r.description}\n  Status: ${r.enabled ? "Enabled" : "Disabled"}${r.requiresCI ? ` | Requires: ${r.requiresCI}` : ""}`,
+    ).join("\n");
+
+  return {
+    content: [{ type: "text", text }],
+  };
+}
+
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
@@ -425,6 +791,51 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           additionalProperties: false,
         },
       },
+      {
+        name: "megalinter_get_linters",
+        description:
+          "Discover available linters by language, security category, or auto-fix capability.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            language: {
+              type: "string",
+              description:
+                "Filter by programming language (e.g., python, javascript, terraform).",
+            },
+            securityOnly: {
+              type: "boolean",
+              description: "Return only security-focused linters.",
+              default: false,
+            },
+            autoFixOnly: {
+              type: "boolean",
+              description: "Return only linters that support automatic fixes.",
+              default: false,
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "megalinter_get_security_info",
+        description:
+          "Get comprehensive information about security-focused linters organized by category (SAST, secrets, supply-chain, container, infrastructure).",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "megalinter_get_reporters",
+        description: "List all available MegaLinter reporters and their configuration options.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          additionalProperties: false,
+        },
+      },
     ],
   };
 });
@@ -449,6 +860,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         },
       ],
     };
+  }
+
+  if (request.params.name === "megalinter_get_linters") {
+    return handleGetLintersToolHandler(args);
+  }
+
+  if (request.params.name === "megalinter_get_security_info") {
+    return handleGetSecurityInfoTool();
+  }
+
+  if (request.params.name === "megalinter_get_reporters") {
+    return handleGetReportersTool();
   }
 
   return {
