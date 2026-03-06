@@ -34,9 +34,9 @@ repos:
         name: eslint
         entry: npm run lint --
         language: system
-        types: [typescript]
+        files: \.(ts|tsx)$
         require_serial: false
-        stages: [commit]
+        stages: [pre-commit]
 
   # TypeScript type checking
   - repo: local
@@ -45,9 +45,9 @@ repos:
         name: typescript
         entry: npm run check
         language: system
-        types: [typescript]
+        files: \.(ts|tsx)$
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
 
 # Global settings
 default_language_version:
