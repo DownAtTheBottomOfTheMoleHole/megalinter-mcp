@@ -60,7 +60,13 @@ type LinterInfo = {
   description: string;
   isSecurity: boolean;
   isAutoFix: boolean;
-  securityCategories?: ("sast" | "secrets" | "supply-chain" | "container" | "infrastructure")[];
+  securityCategories?: (
+    | "sast"
+    | "secrets"
+    | "supply-chain"
+    | "container"
+    | "infrastructure"
+  )[];
 };
 
 type ReporterInfo = {
@@ -113,7 +119,8 @@ const LINTER_CATALOG: Record<string, LinterInfo> = {
     name: "Semgrep",
     language: "multi",
     category: "security",
-    description: "Static analysis engine for finding bugs, security issues, and antipatterns",
+    description:
+      "Static analysis engine for finding bugs, security issues, and antipatterns",
     isSecurity: true,
     isAutoFix: true,
     securityCategories: ["sast"],
@@ -639,7 +646,15 @@ function handleGetSecurityInfoTool() {
         }
         return acc;
       },
-      {} as Record<string, Array<{ id: string; name: string; description: string; isAutoFix: boolean }>>,
+      {} as Record<
+        string,
+        Array<{
+          id: string;
+          name: string;
+          description: string;
+          isAutoFix: boolean;
+        }>
+      >,
     );
 
   const text =
@@ -685,7 +700,10 @@ async function handleParseReportsTool(args: ToolArgs) {
   const reportType = readString(args, "reportType") ?? "json";
 
   try {
-    const reportFile = path.join(reportsPath, `megalinter-report.${reportType}`);
+    const reportFile = path.join(
+      reportsPath,
+      `megalinter-report.${reportType}`,
+    );
     const { readFile } = await import("node:fs/promises");
 
     let report: unknown;
@@ -880,8 +898,7 @@ async function handleGetSecurityRecommendationsTool(args: ToolArgs) {
     responseText += "1. Review flagged security issues in priority order\n";
     responseText += "2. Configure auto-fix linters where available\n";
     responseText += "3. Integrate security scanning into CI/CD pipeline\n";
-    responseText +=
-      "4. Enable PR comments to catch issues during review\n";
+    responseText += "4. Enable PR comments to catch issues during review\n";
 
     return {
       content: [{ type: "text", text: responseText }],
@@ -1083,7 +1100,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "megalinter_get_reporters",
-        description: "List all available MegaLinter reporters and their configuration options.",
+        description:
+          "List all available MegaLinter reporters and their configuration options.",
         inputSchema: {
           type: "object",
           properties: {},
@@ -1105,8 +1123,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             reportType: {
               type: "string",
               enum: ["json", "sarif"],
-              description:
-                "Type of report to parse. Defaults to json.",
+              description: "Type of report to parse. Defaults to json.",
               default: "json",
             },
           },
@@ -1128,13 +1145,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             severityFilter: {
               type: "string",
               enum: ["error", "warning", "info"],
-              description:
-                "Filter issues by severity level.",
+              description: "Filter issues by severity level.",
             },
             linterFilter: {
               type: "string",
-              description:
-                "Filter issues by specific linter name.",
+              description: "Filter issues by specific linter name.",
             },
           },
           additionalProperties: false,
