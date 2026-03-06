@@ -31,20 +31,14 @@ If you previously used token-based publishing, remove `NPM_TOKEN` from repositor
 
 ### Step 3: Verify configuration
 
-The publish workflow runs automatically when you push a version tag:
+The release workflow is fully automated for `main`:
 
-```bash
-# Example: publishing version 0.1.0
-git tag v0.1.0
-git push origin v0.1.0
-```
+1. On push to `main`, it computes the next version and enforces strict SemVer (`x.y.z`).
+2. It updates version files, commits, and tags automatically.
+3. In the same workflow run, it tests, builds, publishes to npm, and publishes to the MCP Registry.
+4. It creates a GitHub Release with generated, human-friendly notes grouped by change type.
 
-The workflow will:
-
-1. ✅ Run tests and build verification.
-2. ✅ Run MegaLinter compliance scan.
-3. ✅ Publish package to [npm](https://www.npmjs.com/package/@downatthebottomofthemolehole/megalinter-mcp-server) using OIDC trusted publishing.
-4. ✅ Publish server to MCP Registry: `io.github.downatthebottomofthemolehole/megalinter`.
+Manual and tag-based publishing remain available when needed.
 
 ## Authentication Methods
 
@@ -82,34 +76,14 @@ The workflow will:
 
 ## Version Management
 
-To publish a new version:
+Release versions must be strict SemVer: `major.minor.patch`.
 
-1. Update the version in both [../package.json](../package.json) and [../server.json](../server.json):
+- ✅ Valid: `1.0.14`
+- ❌ Invalid: `1.0.14-2`, `latest`, `1.0.x`
 
-   ```json
-   // package.json
-   "version": "0.2.0"
+For normal operation, merge to `main` and let automation handle versioning and publication.
 
-   // server.json
-   "version": "0.2.0"
-   ```
-
-2. Commit the version bump:
-
-   ```bash
-   git add package.json server.json
-   git commit -m "chore: bump version to 0.2.0"
-   ```
-
-3. Create and push a git tag:
-
-   ```bash
-   git tag v0.2.0
-   git push origin main
-   git push origin v0.2.0
-   ```
-
-4. Monitor the [workflow runs](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions).
+For manual runs (`workflow_dispatch`), provide an explicit `x.y.z` version input.
 
 ## References
 
