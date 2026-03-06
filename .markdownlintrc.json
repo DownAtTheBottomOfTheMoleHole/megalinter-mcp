@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/markdownlint.json",
   "extends": "default",
   "rules": {
     "line-length": false,
