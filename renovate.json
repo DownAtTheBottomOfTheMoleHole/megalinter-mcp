@@ -15,43 +15,7 @@
   "internalChecksFilter": "flexible",
   "packageRules": [
     {
-      "groupName": "Node.js & Core Dependencies",
-      "matchDatasources": [
-        "npm"
-      ],
-      "matchPackageNames": [
-        "@modelcontextprotocol/**",
-        "typescript",
-        "tsx",
-        "@types/node"
-      ],
-      "automerge": false,
-      "schedule": [
-        "after 10pm on Sunday",
-        "after 10pm on Wednesday"
-      ]
-    },
-    {
-      "groupName": "GitHub Actions",
-      "matchDatasources": [
-        "github-tags"
-      ],
-      "automerge": true,
-      "automergeType": "pr",
-      "automergeStrategy": "squash"
-    },
-    {
-      "groupName": "DevDependencies",
-      "matchDepTypes": [
-        "devDependencies"
-      ],
-      "automerge": false,
-      "schedule": [
-        "after 10pm on Sunday",
-        "after 10pm on Wednesday"
-      ]
-    },
-    {
+      "description": "Label updates by type",
       "matchUpdateTypes": [
         "major"
       ],
@@ -92,6 +56,43 @@
       "automergeStrategy": "squash",
       "semanticCommitType": "chore",
       "commitMessageSuffix": " +semver: patch"
+    },
+    {
+      "groupName": "Node.js & Core Dependencies",
+      "matchDatasources": [
+        "npm"
+      ],
+      "matchPackageNames": [
+        "@modelcontextprotocol/**",
+        "typescript",
+        "tsx",
+        "@types/node"
+      ],
+      "automerge": false,
+      "schedule": [
+        "after 10pm on Sunday",
+        "after 10pm on Wednesday"
+      ]
+    },
+    {
+      "groupName": "GitHub Actions",
+      "matchDatasources": [
+        "github-tags"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    },
+    {
+      "groupName": "DevDependencies",
+      "matchDepTypes": [
+        "devDependencies"
+      ],
+      "automerge": false,
+      "schedule": [
+        "after 10pm on Sunday",
+        "after 10pm on Wednesday"
+      ]
     }
   ],
   "postUpdateOptions": [
