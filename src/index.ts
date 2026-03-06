@@ -764,10 +764,10 @@ async function handleGetIssueSummaryTool(args: ToolArgs) {
 
     let responseText = "# Issue Summary Report\n\n";
     responseText += `**Total Issues**: ${summary.totalIssues}\n\n`;
-    responseText += "## By Linter\n";
+    responseText += "## By Linter (Runs)\n";
     responseText +=
       Object.entries(summary.byLinter)
-        .map(([linter, count]) => `- ${linter}: ${count} issues`)
+        .map(([linter, count]) => `- ${linter}: ${count} runs`)
         .join("\n") || "No linter data available";
 
     if (severityFilter || linterFilter) {

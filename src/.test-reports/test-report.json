@@ -1,1 +1,1 @@
-[{"filePath":"src/index.ts","line":42,"column":5,"severity":"error","message":"Unused variable 'foo'","linter":"TYPESCRIPT_ESLINT","rule":"no-unused-vars"},{"filePath":"src/utils.ts","line":15,"column":10,"severity":"warning","message":"Function complexity exceeds threshold","linter":"TYPESCRIPT_ESLINT","rule":"complexity"},{"filePath":"package.json","line":1,"column":1,"severity":"critical","message":"Dependency with known vulnerability","linter":"PYTHON_SAFETY","rule":"security/vulnerable-dependency"}]
+[]

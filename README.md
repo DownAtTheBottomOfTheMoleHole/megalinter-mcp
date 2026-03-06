@@ -189,7 +189,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 @megalinter-ox-security list python security linters with autofix support
 ```
 
-**Expected output**: Filtered list showing bandit, pyright, and other Python security tools with fix capabilities.
+**Expected output**: Filtered list of Python-related and multi-language security linters from the current catalog that support autofix (if any match the query).
 
 ### Security Categories (`megalinter_get_security_info`)
 
@@ -229,7 +229,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 @megalinter-ox-security generate security recommendations using megalinter-reports
 ```
 
-**Expected output**: Actionable security fixes prioritized by severity with code examples and documentation links.
+**Expected output**: Actionable security recommendations prioritized by severity with linter names, rule IDs, and suggested next steps.
 
 ## Dependencies
 
