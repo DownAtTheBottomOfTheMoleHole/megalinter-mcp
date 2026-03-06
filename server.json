@@ -6,12 +6,12 @@
     "url": "https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp",
     "source": "github"
   },
-  "version": "1.0.34",
+  "version": "1.0.35",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@downatthebottomofthemolehole/megalinter-mcp-server",
-      "version": "1.0.34",
+      "version": "1.0.35",
       "transport": {
         "type": "stdio"
       }
