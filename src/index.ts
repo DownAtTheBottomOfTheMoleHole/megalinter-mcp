@@ -584,7 +584,7 @@ async function handleWriteConfigTool(args: ToolArgs) {
   };
 }
 
-function handleGetLintersToolHandler(args: ToolArgs) {
+function handleGetLintersTool(args: ToolArgs) {
   const language = readString(args, "language");
   const securityOnly = readBool(args, "securityOnly", false);
   const autoFixOnly = readBool(args, "autoFixOnly", false);
@@ -1161,7 +1161,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   if (request.params.name === "megalinter_get_linters") {
-    return handleGetLintersToolHandler(args);
+    return handleGetLintersTool(args);
   }
 
   if (request.params.name === "megalinter_get_security_info") {
