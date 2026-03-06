@@ -1,19 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/markdownlint.json",
-  "extends": "default",
-  "rules": {
-    "line-length": false,
-    "no-hard-tabs": true,
-    "no-trailing-spaces": true,
-    "no-trailing-punctuation": false,
-    "no-multiple-spaces": true,
-    "no-blanks-blockquote": true,
-    "no-inline-html": false,
-    "proper-names": false,
-    "heading-increment": true,
-    "ul-consistency": true,
-    "list-marker-space": true,
-    "code-block-language": true,
-    "commands-show-output": false
-  }
+  "default": true,
+  "line-length": false,
+  "no-trailing-punctuation": false,
+  "no-inline-html": false,
+  "proper-names": false,
+  "commands-show-output": false
 }
