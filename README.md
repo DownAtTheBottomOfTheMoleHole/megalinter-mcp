@@ -229,7 +229,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 @megalinter-ox-security generate security recommendations using megalinter-reports
 ```
 
-**Expected output**: Actionable security fixes prioritized by severity with code examples and documentation links.
+**Expected output**: Actionable security recommendations prioritized by severity with linter names, rule IDs, and suggested next steps.
 
 ## Dependencies
 
