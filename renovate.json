@@ -61,7 +61,10 @@
       ],
       "assignees": [
         "@downatthebottomofthemolehole"
-      ]
+      ],
+      "semanticCommitType": "chore",
+      "additionalBranchPrefix": "{{semanticCommitType}}-",
+      "commitMessageSuffix": " +semver: major"
     },
     {
       "matchUpdateTypes": [
@@ -72,7 +75,9 @@
       ],
       "automerge": true,
       "automergeType": "pr",
-      "automergeStrategy": "squash"
+      "automergeStrategy": "squash",
+      "semanticCommitType": "chore",
+      "commitMessageSuffix": " +semver: minor"
     },
     {
       "matchUpdateTypes": [
@@ -84,7 +89,9 @@
       ],
       "automerge": true,
       "automergeType": "pr",
-      "automergeStrategy": "squash"
+      "automergeStrategy": "squash",
+      "semanticCommitType": "chore",
+      "commitMessageSuffix": " +semver: patch"
     }
   ],
   "postUpdateOptions": [
