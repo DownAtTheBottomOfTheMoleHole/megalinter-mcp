@@ -6,6 +6,9 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "megalinter-mcp-server": "dist/index.js"
+  },
   "files": [
     "dist/**/*",
     "mcp.json",

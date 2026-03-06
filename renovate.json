@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/renovate.json",
   "extends": [
     "config:base",
     ":enableVulnerabilityAlerts",
@@ -15,7 +16,9 @@
   "packageRules": [
     {
       "groupName": "Node.js & Core Dependencies",
-      "matchDatasources": ["npm"],
+      "matchDatasources": [
+        "npm"
+      ],
       "matchPackagePatterns": [
         "^@modelcontextprotocol",
         "typescript",
@@ -23,52 +26,84 @@
         "@types/node"
       ],
       "automerge": false,
-      "schedule": ["after 10pm on Sunday", "after 10pm on Wednesday"]
+      "schedule": [
+        "after 10pm on Sunday",
+        "after 10pm on Wednesday"
+      ]
     },
     {
       "groupName": "GitHub Actions",
-      "matchDatasources": ["github-tags"],
+      "matchDatasources": [
+        "github-tags"
+      ],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "squash"
     },
     {
       "groupName": "DevDependencies",
-      "matchDepTypes": ["devDependencies"],
+      "matchDepTypes": [
+        "devDependencies"
+      ],
       "automerge": false,
-      "schedule": ["after 10pm on Sunday", "after 10pm on Wednesday"]
+      "schedule": [
+        "after 10pm on Sunday",
+        "after 10pm on Wednesday"
+      ]
     },
     {
-      "matchUpdateTypes": ["major"],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "automerge": false,
-      "labels": ["breaking-change"],
-      "assignees": ["@downatthebottomofthemolehole"]
+      "labels": [
+        "breaking-change"
+      ],
+      "assignees": [
+        "@downatthebottomofthemolehole"
+      ]
     },
     {
-      "matchUpdateTypes": ["minor"],
-      "labels": ["feature"],
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "labels": [
+        "feature"
+      ],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "squash"
     },
     {
-      "matchUpdateTypes": ["patch", "digest"],
-      "labels": ["maintenance"],
+      "matchUpdateTypes": [
+        "patch",
+        "digest"
+      ],
+      "labels": [
+        "maintenance"
+      ],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "squash"
     }
   ],
-  "postUpdateOptions": ["npmDedupe", "yarnDedupeHighest"],
+  "postUpdateOptions": [
+    "npmDedupe",
+    "yarnDedupeHighest"
+  ],
   "npm": {
     "rangeStrategy": "bump"
   },
   "vulnerabilityAlerts": {
-    "assignees": ["@downatthebottomofthemolehole"],
-    "labels": ["security"],
+    "assignees": [
+      "@downatthebottomofthemolehole"
+    ],
+    "labels": [
+      "security"
+    ],
     "automerge": false
   },
-  "prCreation": "all",
+  "prCreation": "immediate",
   "prConcurrentLimit": 3,
   "prConcurrentLimitType": "global",
   "semanticCommits": "enabled",

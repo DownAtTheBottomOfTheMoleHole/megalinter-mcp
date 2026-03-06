@@ -5,11 +5,11 @@ on:
     branches:
       - main
     tags:
-      - '[vV]*'
+      - "[vV]*"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to publish (without v prefix). Required for manual runs on branches.'
+        description: "Version to publish (without v prefix). Required for manual runs on branches."
         required: false
         type: string
 
@@ -47,7 +47,7 @@ jobs:
 
       - uses: gittools/actions/gitversion/setup@71a79f7569b981036febd9ce5870f87e069928e7 # v4.3.3
         with:
-          versionSpec: '6.6.x'
+          versionSpec: "6.6.x"
 
       - uses: gittools/actions/gitversion/execute@71a79f7569b981036febd9ce5870f87e069928e7 # v4.3.3
         id: gitversion
@@ -185,7 +185,7 @@ jobs:
       - name: Check npm package version
         id: npm_version_check
         env:
-          PACKAGE_NAME: '@downatthebottomofthemolehole/megalinter-mcp-server'
+          PACKAGE_NAME: "@downatthebottomofthemolehole/megalinter-mcp-server"
           VERSION: ${{ steps.release_version.outputs.value }}
         run: |
           if npm view "${PACKAGE_NAME}@${VERSION}" version >/dev/null 2>&1; then
