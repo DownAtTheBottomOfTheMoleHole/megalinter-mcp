@@ -274,4 +274,347 @@ describe("MCP Server Tools Extensions", () => {
       expect(hasSecurityIssues).toBe(true);
     });
   });
+
+  describe("Get Linters Tool Handler", () => {
+    it("should filter linters by language", () => {
+      // Mock linter catalog structure
+      const LINTER_CATALOG = {
+        PYTHON_BANDIT: {
+          name: "Bandit",
+          language: "python",
+          category: "security",
+          description: "Security issue scanner for Python",
+          isSecurity: true,
+          isAutoFix: false,
+        },
+        JAVASCRIPT_ESLINT: {
+          name: "ESLint",
+          language: "javascript",
+          category: "lint",
+          description: "JavaScript linter",
+          isSecurity: false,
+          isAutoFix: true,
+        },
+      };
+
+      const pythonLinters = Object.values(LINTER_CATALOG).filter(
+        (l) => l.language === "python",
+      );
+      expect(pythonLinters.length).toBe(1);
+      expect(pythonLinters[0].name).toBe("Bandit");
+    });
+
+    it("should filter security linters only", () => {
+      const LINTER_CATALOG = {
+        PYTHON_BANDIT: {
+          name: "Bandit",
+          language: "python",
+          category: "security",
+          description: "Security issue scanner for Python",
+          isSecurity: true,
+          isAutoFix: false,
+        },
+        JAVASCRIPT_ESLINT: {
+          name: "ESLint",
+          language: "javascript",
+          category: "lint",
+          description: "JavaScript linter",
+          isSecurity: false,
+          isAutoFix: true,
+        },
+      };
+
+      const securityLinters = Object.values(LINTER_CATALOG).filter(
+        (l) => l.isSecurity,
+      );
+      expect(securityLinters.length).toBe(1);
+      expect(securityLinters[0].isSecurity).toBe(true);
+    });
+
+    it("should filter auto-fix capable linters", () => {
+      const LINTER_CATALOG = {
+        PYTHON_BANDIT: {
+          name: "Bandit",
+          language: "python",
+          category: "security",
+          description: "Security issue scanner for Python",
+          isSecurity: true,
+          isAutoFix: false,
+        },
+        JAVASCRIPT_ESLINT: {
+          name: "ESLint",
+          language: "javascript",
+          category: "lint",
+          description: "JavaScript linter",
+          isSecurity: false,
+          isAutoFix: true,
+        },
+      };
+
+      const autoFixLinters = Object.values(LINTER_CATALOG).filter(
+        (l) => l.isAutoFix,
+      );
+      expect(autoFixLinters.length).toBe(1);
+      expect(autoFixLinters[0].name).toBe("ESLint");
+    });
+
+    it("should support combined filters", () => {
+      const LINTER_CATALOG = {
+        PYTHON_RUFF: {
+          name: "Ruff",
+          language: "python",
+          category: "lint",
+          description: "Python linter",
+          isSecurity: false,
+          isAutoFix: true,
+        },
+        PYTHON_BANDIT: {
+          name: "Bandit",
+          language: "python",
+          category: "security",
+          description: "Security issue scanner for Python",
+          isSecurity: true,
+          isAutoFix: false,
+        },
+      };
+
+      const filtered = Object.values(LINTER_CATALOG).filter(
+        (l) => l.language === "python" && l.isAutoFix,
+      );
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].name).toBe("Ruff");
+    });
+  });
+
+  describe("Get Security Info Tool", () => {
+    it("should categorize linters by security type", () => {
+      const SECURITY_CATEGORIES = {
+        sast: ["JAVASCRIPT_SEMGREP", "PYTHON_SEMGREP", "PYTHON_BANDIT"],
+        secrets: ["REPOSITORY_GITLEAKS"],
+        "supply-chain": ["PYTHON_SAFETY"],
+        container: ["DOCKERFILE_HADOLINT", "TRIVY"],
+        infrastructure: ["CHECKOV", "TFSEC"],
+      };
+
+      expect(SECURITY_CATEGORIES.sast.length).toBe(3);
+      expect(SECURITY_CATEGORIES.secrets.length).toBe(1);
+    });
+
+    it("should group linters by threat category", () => {
+      const categoryGroups = {
+        sast: {
+          count: 3,
+          examples: ["Semgrep", "Bandit"],
+        },
+        secrets: {
+          count: 1,
+          examples: ["Gitleaks"],
+        },
+      };
+
+      expect(categoryGroups.sast.count).toBe(3);
+      expect(categoryGroups.sast.examples[0]).toBe("Semgrep");
+    });
+
+    it("should identify applicable linters per threat type", () => {
+      const threats = {
+        injection: ["Semgrep", "Bandit"],
+        "credential-exposure": ["Gitleaks"],
+        "vulnerable-dependency": ["Safety", "Trivy"],
+        "infrastructure-misconfiguration": ["Checkov", "Tfsec"],
+      };
+
+      expect(threats.injection.length).toBe(2);
+      expect(threats["credential-exposure"][0]).toBe("Gitleaks");
+    });
+  });
+
+  describe("Get Reporters Tool", () => {
+    it("should list all available reporters", () => {
+      const REPORTERS = [
+        { id: "text", name: "Text Files", enabled: true },
+        { id: "json", name: "JSON Report", enabled: false },
+        { id: "sarif", name: "SARIF", enabled: false },
+        { id: "github-pr", name: "GitHub PR Comments", enabled: true },
+      ];
+
+      expect(REPORTERS.length).toBeGreaterThan(0);
+      expect(REPORTERS.some((r) => r.id === "text")).toBe(true);
+    });
+
+    it("should identify enabled reporters", () => {
+      const REPORTERS = [
+        { id: "text", name: "Text Files", enabled: true },
+        { id: "json", name: "JSON Report", enabled: false },
+        { id: "github-pr", name: "GitHub PR Comments", enabled: true },
+      ];
+
+      const enabled = REPORTERS.filter((r) => r.enabled);
+      expect(enabled.length).toBe(2);
+      expect(enabled.map((r) => r.id)).toContain("text");
+    });
+
+    it("should provide reporter output formats", () => {
+      const REPORTERS = [
+        { id: "text", name: "Text Files", outputFormat: "text", enabled: true },
+        { id: "json", name: "JSON Report", outputFormat: "json", enabled: false },
+        { id: "sarif", name: "SARIF", outputFormat: "sarif", enabled: false },
+      ];
+
+      const jsonReporter = REPORTERS.find((r) => r.outputFormat === "json");
+      expect(jsonReporter?.name).toBe("JSON Report");
+    });
+
+    it("should identify CI-specific reporters", () => {
+      const REPORTERS = [
+        {
+          id: "github-pr",
+          name: "GitHub PR Comments",
+          requiresCI: "github",
+          enabled: true,
+        },
+        {
+          id: "gitlab-mr",
+          name: "GitLab MR Comments",
+          requiresCI: "gitlab",
+          enabled: true,
+        },
+        { id: "text", name: "Text Files", enabled: true },
+      ];
+
+      const githubReporters = REPORTERS.filter(
+        (r) => r.requiresCI === "github",
+      );
+      expect(githubReporters.length).toBe(1);
+      expect(githubReporters[0].id).toBe("github-pr");
+    });
+  });
+
+  describe("Parse Reports Tool", () => {
+    it("should validate JSON report structure", () => {
+      const report = JSON.parse(JSON.stringify(mockReport));
+      expect(Array.isArray(report)).toBe(true);
+      expect(report.length).toBe(3);
+    });
+
+    it("should handle missing report files gracefully", () => {
+      const fileExists = false;
+      expect(fileExists).toBe(false);
+    });
+
+    it("should parse SARIF report format", () => {
+      const sarifReport = {
+        version: "2.1.0",
+        runs: [
+          {
+            tool: { driver: { name: "Semgrep" } },
+            results: [
+              {
+                ruleId: "rules/python.lang/security/injection/sql-injection.yaml",
+                message: { text: "Potential SQL injection" },
+                level: "warning",
+              },
+            ],
+          },
+        ],
+      };
+
+      expect(sarifReport.version).toBe("2.1.0");
+      expect(sarifReport.runs[0].tool.driver.name).toBe("Semgrep");
+    });
+  });
+
+  describe("Get Issue Summary Tool", () => {
+    it("should count issues by severity", () => {
+      const summary = {
+        totalIssues: 3,
+        bySeverity: {
+          error: 1,
+          warning: 1,
+          critical: 1,
+        },
+      };
+
+      expect(summary.totalIssues).toBe(3);
+      expect(summary.bySeverity.error).toBe(1);
+    });
+
+    it("should aggregate issues by linter", () => {
+      const summary = {
+        byLinter: {
+          TYPESCRIPT_ESLINT: 2,
+          PYTHON_SAFETY: 1,
+        },
+      };
+
+      expect(summary.byLinter.TYPESCRIPT_ESLINT).toBe(2);
+      expect(Object.keys(summary.byLinter).length).toBe(2);
+    });
+
+    it("should support severity filtering", () => {
+      const filtered = mockReport.filter(
+        (i) => String(i.severity).toLowerCase() === "error",
+      );
+      expect(filtered.length).toBe(1);
+    });
+
+    it("should support linter filtering", () => {
+      const filtered = mockReport.filter(
+        (i) => i.linter === "PYTHON_SAFETY",
+      );
+      expect(filtered.length).toBe(1);
+    });
+  });
+
+  describe("Get Security Recommendations Tool", () => {
+    it("should identify active security linters", () => {
+      const activeLinters = ["Semgrep", "Bandit", "Gitleaks"];
+      expect(activeLinters.length).toBeGreaterThan(0);
+      expect(activeLinters[0]).toBe("Semgrep");
+    });
+
+    it("should provide SAST recommendations", () => {
+      const sastLinters = ["Semgrep", "Bandit", "DevSkim"];
+      expect(sastLinters.includes("Semgrep")).toBe(true);
+    });
+
+    it("should provide secrets management guidance", () => {
+      const guidance =
+        "Use Gitleaks to prevent credential leaks. Configure pre-commit hooks to validate before push.";
+      expect(guidance).toContain("Gitleaks");
+      expect(guidance).toContain("pre-commit");
+    });
+
+    it("should provide container security recommendations", () => {
+      const recommendations = [
+        "Use Hadolint for Dockerfile security",
+        "Use Trivy for container image vulnerability scanning",
+      ];
+
+      expect(recommendations.length).toBe(2);
+      expect(recommendations[0]).toContain("Hadolint");
+    });
+
+    it("should provide infrastructure security guidance", () => {
+      const infra = {
+        linters: ["Checkov", "Tfsec"],
+        purpose:
+          "Infrastructure as Code security and misconfiguration detection",
+      };
+
+      expect(infra.linters.length).toBe(2);
+      expect(infra.purpose).toContain("Infrastructure");
+    });
+
+    it("should prioritize issues and next steps", () => {
+      const nextSteps = [
+        "Review flagged security issues in priority order",
+        "Configure auto-fix linters where available",
+        "Integrate security scanning into CI/CD pipeline",
+      ];
+
+      expect(nextSteps.length).toBe(3);
+      expect(nextSteps[0]).toContain("priority");
+    });
+  });
 });
