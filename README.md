@@ -12,8 +12,9 @@ A Model Context Protocol (MCP) server for running [Ox Security MegaLinter](https
 
 ## Overview
 
-This server provides nine MCP tools across execution, discovery, and analysis workflows:
+This server provides ten MCP tools across execution, discovery, and analysis workflows:
 
+- `megalinter_quick_action` for short, natural requests with sensible defaults.
 - `megalinter_run` to execute MegaLinter with configurable runtime and runner options.
 - `megalinter_write_config` to generate a minimal `.mega-linter.yml` file.
 - `megalinter_list_flavors` to return common MegaLinter flavors.
@@ -23,6 +24,16 @@ This server provides nine MCP tools across execution, discovery, and analysis wo
 - `megalinter_parse_reports` to parse JSON or SARIF report artefacts.
 - `megalinter_get_issue_summary` to aggregate report issues by linter and severity.
 - `megalinter_get_security_recommendations` to generate security-focused remediation guidance.
+
+### Quick Start (Short Prompts)
+
+If you prefer short prompts, use `megalinter_quick_action` first:
+
+- `@megalinter-ox-security quick scan this repository`
+- `@megalinter-ox-security security scan`
+- `@megalinter-ox-security summarise errors`
+- `@megalinter-ox-security list python security linters`
+- `@megalinter-ox-security write config`
 
 ### Platform Compatibility
 
@@ -41,6 +52,7 @@ The only requirement is Docker (or a compatible container runtime like Colima).
 
 | Tool | Category | Typical outcome |
 | --- | --- | --- |
+| `megalinter_quick_action` | Interactive | Handle short natural requests with defaults |
 | `megalinter_run` | Execution | Run linting and produce report artefacts |
 | `megalinter_write_config` | Configuration | Generate baseline `.mega-linter.yml` |
 | `megalinter_list_flavors` | Discovery | Identify an appropriate flavour for your stack |
@@ -53,7 +65,33 @@ The only requirement is Docker (or a compatible container runtime like Colima).
 
 ## Tools
 
+### `megalinter_quick_action`
+
+Interactive shortcut that accepts a short request and routes it to the right workflow.
+
+Inputs:
+
+- `request` (string, optional): Short instruction. Default: `quick scan`.
+- `target` (string, optional): Directory to scan. Default: `.`.
+- `workingDirectory` (string, optional): Command working directory.
+- `reportsPath` (string, optional): Reports directory. Default: `megalinter-reports`.
+- `timeoutMinutes` (number, optional): Timeout for scan actions. Default: `20`.
+- `summaryOnly` (boolean, optional): Return concise output for scans. Default: `true`.
+- `flavor` (string, optional): Optional flavor override for scan actions.
+- `fix` (boolean, optional): Force auto-fixes for scan actions.
+- `targetPath` (string, optional): Config output path for write-config requests.
+
+Examples:
+
+- `request: "quick scan"` -> Runs `ci_light` against changed files.
+- `request: "full scan"` -> Runs `all` flavor.
+- `request: "security scan"` -> Runs `security` flavor.
+- `request: "summarise errors"` -> Returns issue summary filtered to errors.
+- `request: "parse sarif report"` -> Parses SARIF output.
+
 ### `megalinter_run`
+
+Use this tool when you need full argument-level control. For short prompts, prefer `megalinter_quick_action`.
 
 Runs `mega-linter-runner` via `npx`.
 
@@ -76,6 +114,7 @@ Inputs:
 - `lintChangedFilesOnly` (boolean, optional): Sets `VALIDATE_ALL_CODEBASE=false` when true.
 - `runnerVersion` (string, optional): npm version for `mega-linter-runner` (for example `latest`).
 - `timeoutSeconds` (number, optional): Timeout in seconds. Default: `3600`.
+- `summaryOnly` (boolean, optional): Return concise logs. Default: `false`.
 - `extraArgs` (string[], optional): Additional CLI arguments.
 
 ### `megalinter_write_config`
@@ -151,15 +190,23 @@ Inputs:
 
 Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 
+### Quick Actions (`megalinter_quick_action`)
+
+```text
+@megalinter-ox-security quick scan
+@megalinter-ox-security full scan
+@megalinter-ox-security security scan
+@megalinter-ox-security summarise errors
+@megalinter-ox-security parse sarif report
+@megalinter-ox-security write config
+```
+
+**Expected output**: Routes each short request to the correct tool with sensible defaults.
+
 ### Run MegaLinter (`megalinter_run`)
 
 ```text
-@megalinter-ox-security run MegaLinter with:
-- workingDirectory: ${workspaceFolder}
-- path: .
-- flavor: all
-- reportsPath: megalinter-reports
-- timeoutSeconds: 1800
+@megalinter-ox-security run megalinter with flavor all on . with reports in megalinter-reports
 ```
 
 **Expected output**: Executes linters and reports issues found across all languages. Creates `megalinter-reports/` with JSON, SARIF, and text reports.
@@ -167,10 +214,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 ### Create Config (`megalinter_write_config`)
 
 ```text
-@megalinter-ox-security create a MegaLinter config at .mega-linter.yml with:
-- applyFixes: none
-- showElapsedTime: true
-- flavorSuggestions: false
+@megalinter-ox-security create a MegaLinter config at .mega-linter.yml
 ```
 
 **Expected output**: Creates `.mega-linter.yml` with specified settings ready for customization.

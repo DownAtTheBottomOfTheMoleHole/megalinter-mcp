@@ -21,6 +21,10 @@
   "transport": "stdio",
   "tools": [
     {
+      "name": "megalinter_quick_action",
+      "description": "Interactive shortcut for short requests like quick scan, security scan, summarise errors, and write config"
+    },
+    {
       "name": "megalinter_run",
       "description": "Run MegaLinter on a local directory with specified flavour and configuration"
     },

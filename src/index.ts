@@ -24,6 +24,7 @@ const DEFAULT_FLAVOR = "all";
 const DEFAULT_RELEASE = "v9";
 const DEFAULT_REPORTS_PATH = "megalinter-reports";
 const DEFAULT_TIMEOUT_SECONDS = 3600;
+const DEFAULT_QUICK_TIMEOUT_MINUTES = 20;
 
 const KNOWN_FLAVORS = [
   "all",
@@ -112,6 +113,19 @@ type ReportMetadata = {
     status?: string;
   }>;
 };
+
+type QuickIntent =
+  | "run"
+  | "write_config"
+  | "list_flavors"
+  | "list_linters"
+  | "security_info"
+  | "list_reporters"
+  | "parse_reports"
+  | "issue_summary"
+  | "security_recommendations";
+
+type QuickRunPreset = "quick" | "full" | "security" | "fix";
 
 // Comprehensive linter metadata from MegaLinter documentation
 const LINTER_CATALOG: Record<string, LinterInfo> = {
@@ -365,6 +379,23 @@ const REPORTERS: ReporterInfo[] = [
   },
 ];
 
+const LINTER_LANGUAGE_HINTS = [
+  "ansible",
+  "cloudformation",
+  "dockerfile",
+  "go",
+  "infrastructure",
+  "java",
+  "javascript",
+  "kubernetes",
+  "php",
+  "python",
+  "repository",
+  "rust",
+  "terraform",
+  "typescript",
+];
+
 const server = new Server(
   {
     name: "megalinter-ox-mcp-server",
@@ -455,6 +486,123 @@ function buildRunnerEnv(args: ToolArgs): NodeJS.ProcessEnv {
   return env;
 }
 
+function summariseOutput(output: string, maxLines: number): string {
+  if (!output) {
+    return "(empty)";
+  }
+
+  const lines = output.split(/\r?\n/);
+  if (lines.length <= maxLines) {
+    return output;
+  }
+
+  const headCount = Math.max(1, Math.floor(maxLines * 0.7));
+  const tailCount = Math.max(1, maxLines - headCount);
+  const head = lines.slice(0, headCount).join("\n");
+  const tail = lines.slice(-tailCount).join("\n");
+
+  return `${head}\n\n... output truncated for summary mode ...\n\n${tail}`;
+}
+
+function normaliseText(value: string | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function includesAny(text: string, tokens: string[]): boolean {
+  return tokens.some((token) => text.includes(token));
+}
+
+function getQuickIntent(request: string): QuickIntent {
+  if (includesAny(request, ["flavor", "flavour"])) {
+    return "list_flavors";
+  }
+
+  if (includesAny(request, ["reporter"])) {
+    return "list_reporters";
+  }
+
+  if (
+    includesAny(request, [
+      "security info",
+      "security categories",
+      "security category",
+      "threat category",
+    ])
+  ) {
+    return "security_info";
+  }
+
+  if (includesAny(request, ["recommend", "remediation"])) {
+    return "security_recommendations";
+  }
+
+  if (
+    includesAny(request, ["summary", "summarise", "summarize", "triage"])
+  ) {
+    return "issue_summary";
+  }
+
+  if (
+    includesAny(request, ["parse", "sarif", "json report", "read report"])
+  ) {
+    return "parse_reports";
+  }
+
+  if (includesAny(request, ["linter", "linters"])) {
+    return "list_linters";
+  }
+
+  if (includesAny(request, ["config", ".mega-linter.yml", "configuration"])) {
+    return "write_config";
+  }
+
+  return "run";
+}
+
+function getQuickRunPreset(request: string): QuickRunPreset {
+  if (includesAny(request, ["security", "secure", "sast", "secrets"])) {
+    return "security";
+  }
+
+  if (includesAny(request, ["fix", "auto-fix", "autofix"])) {
+    return "fix";
+  }
+
+  if (includesAny(request, ["full", "all files", "complete"])) {
+    return "full";
+  }
+
+  return "quick";
+}
+
+function getLanguageFromText(request: string): string | undefined {
+  for (const language of LINTER_LANGUAGE_HINTS) {
+    if (request.includes(language)) {
+      return language;
+    }
+  }
+
+  return undefined;
+}
+
+function getSeverityFromText(
+  request: string,
+): "error" | "warning" | "info" | undefined {
+  if (request.includes("error")) {
+    return "error";
+  }
+
+  if (request.includes("warning")) {
+    return "warning";
+  }
+
+  if (request.includes("info")) {
+    return "info";
+  }
+
+  return undefined;
+}
+
 async function runCommand(
   command: string,
   commandArgs: string[],
@@ -530,6 +678,10 @@ async function handleRunTool(args: ToolArgs) {
   );
 
   const reportsPath = env.MEGALINTER_REPORTS_PATH ?? DEFAULT_REPORTS_PATH;
+  const summaryOnly = readBool(args, "summaryOnly", false);
+
+  const stdout = summaryOnly ? summariseOutput(result.stdout, 60) : result.stdout;
+  const stderr = summaryOnly ? summariseOutput(result.stderr, 60) : result.stderr;
 
   const responseText = [
     `Command: ${command} ${commandArgs.join(" ")}`,
@@ -537,12 +689,15 @@ async function handleRunTool(args: ToolArgs) {
     `Reports path: ${reportsPath}`,
     `Exit code: ${result.exitCode}`,
     result.timedOut ? `Timed out after ${timeoutSeconds} seconds.` : "",
+    summaryOnly
+      ? "Output mode: summary (set summaryOnly=false for full logs)."
+      : "",
     "",
     "STDOUT:",
-    result.stdout || "(empty)",
+    stdout || "(empty)",
     "",
     "STDERR:",
-    result.stderr || "(empty)",
+    stderr || "(empty)",
   ]
     .filter((line) => line.length > 0)
     .join("\n");
@@ -551,6 +706,119 @@ async function handleRunTool(args: ToolArgs) {
     content: [{ type: "text", text: responseText }],
     isError: result.exitCode !== 0 || result.timedOut,
   };
+}
+
+export async function handleQuickActionTool(args: ToolArgs) {
+  const request = normaliseText(readString(args, "request") ?? "quick scan");
+  const intent = getQuickIntent(request);
+
+  if (intent === "list_flavors") {
+    return {
+      content: [{ type: "text", text: KNOWN_FLAVORS.join(", ") }],
+    };
+  }
+
+  if (intent === "list_reporters") {
+    return handleGetReportersTool();
+  }
+
+  if (intent === "security_info") {
+    return handleGetSecurityInfoTool();
+  }
+
+  if (intent === "security_recommendations") {
+    return handleGetSecurityRecommendationsTool({
+      reportsPath: readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH,
+    });
+  }
+
+  if (intent === "issue_summary") {
+    const severity = getSeverityFromText(request);
+    return handleGetIssueSummaryTool({
+      reportsPath: readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH,
+      severityFilter: severity,
+    });
+  }
+
+  if (intent === "parse_reports") {
+    const reportType = request.includes("sarif") ? "sarif" : "json";
+    return handleParseReportsTool({
+      reportsPath: readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH,
+      reportType,
+    });
+  }
+
+  if (intent === "list_linters") {
+    const language = getLanguageFromText(request);
+    const securityOnly = includesAny(request, [
+      "security",
+      "secure",
+      "sast",
+      "secret",
+    ]);
+    const autoFixOnly = includesAny(request, ["autofix", "auto-fix", "fix"]);
+    return handleGetLintersTool({ language, securityOnly, autoFixOnly });
+  }
+
+  if (intent === "write_config") {
+    const applyFixes = includesAny(request, ["autofix", "auto-fix", "fix"])
+      ? "all"
+      : "none";
+    return handleWriteConfigTool({
+      targetPath: readString(args, "targetPath") ?? ".mega-linter.yml",
+      applyFixes,
+      showElapsedTime: true,
+      flavorSuggestions: false,
+    });
+  }
+
+  const preset = getQuickRunPreset(request);
+  const timeoutMinutes = Math.max(
+    1,
+    readNumber(
+      args,
+      "timeoutMinutes",
+      preset === "full" ? 60 : DEFAULT_QUICK_TIMEOUT_MINUTES,
+    ),
+  );
+
+  const runArgs: ToolArgs = {
+    workingDirectory: readString(args, "workingDirectory"),
+    path: readString(args, "target") ?? ".",
+    reportsPath: readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH,
+    timeoutSeconds: timeoutMinutes * 60,
+    summaryOnly: readBool(args, "summaryOnly", true),
+  };
+
+  if (preset === "quick") {
+    runArgs.flavor = "ci_light";
+    runArgs.lintChangedFilesOnly = true;
+  }
+
+  if (preset === "full") {
+    runArgs.flavor = "all";
+  }
+
+  if (preset === "security") {
+    runArgs.flavor = "security";
+  }
+
+  if (preset === "fix") {
+    runArgs.flavor = "ci_light";
+    runArgs.fix = true;
+    runArgs.lintChangedFilesOnly = true;
+  }
+
+  const explicitFlavor = readString(args, "flavor");
+  if (explicitFlavor) {
+    runArgs.flavor = explicitFlavor;
+  }
+
+  if (readBool(args, "fix")) {
+    runArgs.fix = true;
+  }
+
+  return handleRunTool(runArgs);
 }
 
 async function handleWriteConfigTool(args: ToolArgs) {
@@ -945,9 +1213,67 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
+        name: "megalinter_quick_action",
+        description:
+          "Interactive shortcut tool for short requests (for example: quick scan, security scan, summarise errors, list python security linters).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            request: {
+              type: "string",
+              description:
+                "Short instruction. Examples: quick scan, full scan, security scan, summarise errors, parse sarif report, write config.",
+              default: "quick scan",
+            },
+            target: {
+              type: "string",
+              description: "Directory to scan for run requests. Defaults to .",
+            },
+            workingDirectory: {
+              type: "string",
+              description:
+                "Directory where commands run. Defaults to current process directory.",
+            },
+            reportsPath: {
+              type: "string",
+              description:
+                "Report directory for parse, summary, and recommendation requests.",
+              default: DEFAULT_REPORTS_PATH,
+            },
+            timeoutMinutes: {
+              type: "number",
+              description: "Run timeout in minutes for scan requests.",
+              default: DEFAULT_QUICK_TIMEOUT_MINUTES,
+            },
+            summaryOnly: {
+              type: "boolean",
+              description:
+                "Use concise output for scan requests. Set false for full logs.",
+              default: true,
+            },
+            flavor: {
+              type: "string",
+              description:
+                "Optional flavour override for scan requests (e.g., javascript, python, security).",
+            },
+            fix: {
+              type: "boolean",
+              description: "Force auto-fix for scan requests.",
+              default: false,
+            },
+            targetPath: {
+              type: "string",
+              description:
+                "Output file path for write-config requests. Defaults to .mega-linter.yml.",
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
         name: "megalinter_run",
         description:
-          "Run Ox Security MegaLinter using mega-linter-runner. Works locally or in any CI/CD environment.",
+          "Run Ox Security MegaLinter using mega-linter-runner with full low-level control. For short prompts, use megalinter_quick_action.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1032,6 +1358,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: "number",
               description: "Command timeout in seconds.",
               default: DEFAULT_TIMEOUT_SECONDS,
+            },
+            summaryOnly: {
+              type: "boolean",
+              description: "Return concise logs instead of full stdout/stderr output.",
+              default: false,
             },
             extraArgs: {
               type: "array",
@@ -1201,6 +1532,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const args = (request.params.arguments ?? {}) as ToolArgs;
+
+  if (request.params.name === "megalinter_quick_action") {
+    return handleQuickActionTool(args);
+  }
 
   if (request.params.name === "megalinter_run") {
     return handleRunTool(args);

@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   handleGetIssueSummaryTool,
   handleGetLintersTool,
   handleParseReportsTool,
+  handleQuickActionTool,
 } from "./index.js";
 
 type ToolTextResult = {
@@ -179,5 +180,57 @@ describe("MCP tool handlers", () => {
     expect(linters.every((linter) => linter.isSecurity && linter.isAutoFix)).toBe(
       true,
     );
+  });
+
+  it("quick action summarises only errors when requested", async () => {
+    const report = {
+      summary: {
+        total_badges_errors: 6,
+        total_badges_warnings: 4,
+      },
+      linter_runs: [{ linter_name: "REPOSITORY_SEMGREP", status: "error" }],
+    };
+
+    await writeFile(
+      path.join(testDir, "megalinter-report.json"),
+      JSON.stringify(report),
+      "utf8",
+    );
+
+    const result = (await handleQuickActionTool({
+      request: "summarise errors",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(firstText(result)).toContain("**Total Issues**: 6");
+  });
+
+  it("quick action applies shorthand linter filters", async () => {
+    const result = (await handleQuickActionTool({
+      request: "list security linters with autofix",
+    })) as ToolTextResult;
+
+    const linters = JSON.parse(firstText(result)) as Array<{
+      isSecurity: boolean;
+      isAutoFix: boolean;
+    }>;
+
+    expect(linters.length).toBeGreaterThan(0);
+    expect(linters.every((linter) => linter.isSecurity && linter.isAutoFix)).toBe(
+      true,
+    );
+  });
+
+  it("quick action can write a default config", async () => {
+    const configPath = path.join(testDir, ".mega-linter.yml");
+
+    const result = (await handleQuickActionTool({
+      request: "write config",
+      targetPath: configPath,
+    })) as ToolTextResult;
+
+    const content = await readFile(configPath, "utf8");
+    expect(firstText(result)).toContain("Wrote MegaLinter configuration");
+    expect(content).toContain("APPLY_FIXES: none");
   });
 });
