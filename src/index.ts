@@ -127,6 +127,17 @@ type QuickIntent =
 
 type QuickRunPreset = "quick" | "full" | "security" | "fix";
 
+type QuickAction =
+  | "scan"
+  | "config"
+  | "flavors"
+  | "linters"
+  | "security"
+  | "reporters"
+  | "parse"
+  | "summary"
+  | "recommendations";
+
 // Comprehensive linter metadata from MegaLinter documentation
 const LINTER_CATALOG: Record<string, LinterInfo> = {
   // SAST Linters
@@ -512,6 +523,74 @@ function includesAny(text: string, tokens: string[]): boolean {
   return tokens.some((token) => text.includes(token));
 }
 
+function getQuickIntentFromAction(
+  action: QuickAction | undefined,
+): QuickIntent | undefined {
+  if (!action) {
+    return undefined;
+  }
+
+  if (action === "scan") {
+    return "run";
+  }
+
+  if (action === "config") {
+    return "write_config";
+  }
+
+  if (action === "flavors") {
+    return "list_flavors";
+  }
+
+  if (action === "linters") {
+    return "list_linters";
+  }
+
+  if (action === "security") {
+    return "security_info";
+  }
+
+  if (action === "reporters") {
+    return "list_reporters";
+  }
+
+  if (action === "parse") {
+    return "parse_reports";
+  }
+
+  if (action === "summary") {
+    return "issue_summary";
+  }
+
+  if (action === "recommendations") {
+    return "security_recommendations";
+  }
+
+  return undefined;
+}
+
+function getQuickRunPresetFromScanMode(
+  scanMode: QuickRunPreset | undefined,
+): QuickRunPreset | undefined {
+  return scanMode;
+}
+
+function getEnumString<T extends string>(
+  args: ToolArgs,
+  key: string,
+  allowed: readonly T[],
+): T | undefined {
+  const value = readString(args, key);
+  if (!value) {
+    return undefined;
+  }
+
+  const normalised = value.toLowerCase();
+  return (allowed as readonly string[]).includes(normalised)
+    ? (normalised as T)
+    : undefined;
+}
+
 function getQuickIntent(request: string): QuickIntent {
   if (includesAny(request, ["flavor", "flavour"])) {
     return "list_flavors";
@@ -576,8 +655,14 @@ function getQuickRunPreset(request: string): QuickRunPreset {
 }
 
 function getLanguageFromText(request: string): string | undefined {
-  for (const language of LINTER_LANGUAGE_HINTS) {
-    if (request.includes(language)) {
+  const orderedLanguages = [...LINTER_LANGUAGE_HINTS].sort(
+    (left, right) => right.length - left.length,
+  );
+
+  for (const language of orderedLanguages) {
+    const escaped = language.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const tokenPattern = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`);
+    if (tokenPattern.test(request)) {
       return language;
     }
   }
@@ -709,8 +794,19 @@ async function handleRunTool(args: ToolArgs) {
 }
 
 export async function handleQuickActionTool(args: ToolArgs) {
+  const action = getEnumString<QuickAction>(args, "action", [
+    "scan",
+    "config",
+    "flavors",
+    "linters",
+    "security",
+    "reporters",
+    "parse",
+    "summary",
+    "recommendations",
+  ]);
   const request = normaliseText(readString(args, "request") ?? "quick scan");
-  const intent = getQuickIntent(request);
+  const intent = getQuickIntentFromAction(action) ?? getQuickIntent(request);
 
   if (intent === "list_flavors") {
     return {
@@ -733,7 +829,12 @@ export async function handleQuickActionTool(args: ToolArgs) {
   }
 
   if (intent === "issue_summary") {
-    const severity = getSeverityFromText(request);
+    const severity =
+      getEnumString<"error" | "warning" | "info">(args, "severity", [
+        "error",
+        "warning",
+        "info",
+      ]) ?? getSeverityFromText(request);
     return handleGetIssueSummaryTool({
       reportsPath: readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH,
       severityFilter: severity,
@@ -741,7 +842,11 @@ export async function handleQuickActionTool(args: ToolArgs) {
   }
 
   if (intent === "parse_reports") {
-    const reportType = request.includes("sarif") ? "sarif" : "json";
+    const reportType =
+      getEnumString<"json" | "sarif">(args, "reportType", [
+        "json",
+        "sarif",
+      ]) ?? (request.includes("sarif") ? "sarif" : "json");
     return handleParseReportsTool({
       reportsPath: readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH,
       reportType,
@@ -749,14 +854,17 @@ export async function handleQuickActionTool(args: ToolArgs) {
   }
 
   if (intent === "list_linters") {
-    const language = getLanguageFromText(request);
-    const securityOnly = includesAny(request, [
-      "security",
-      "secure",
-      "sast",
-      "secret",
-    ]);
-    const autoFixOnly = includesAny(request, ["autofix", "auto-fix", "fix"]);
+    const language = readString(args, "language") ?? getLanguageFromText(request);
+    const securityOnly = readBool(
+      args,
+      "securityOnly",
+      includesAny(request, ["security", "secure", "sast", "secret"]),
+    );
+    const autoFixOnly = readBool(
+      args,
+      "autoFixOnly",
+      includesAny(request, ["autofix", "auto-fix", "fix"]),
+    );
     return handleGetLintersTool({ language, securityOnly, autoFixOnly });
   }
 
@@ -772,7 +880,14 @@ export async function handleQuickActionTool(args: ToolArgs) {
     });
   }
 
-  const preset = getQuickRunPreset(request);
+  const scanMode = getEnumString<QuickRunPreset>(args, "scanMode", [
+    "quick",
+    "full",
+    "security",
+    "fix",
+  ]);
+  const preset =
+    getQuickRunPresetFromScanMode(scanMode) ?? getQuickRunPreset(request);
   const timeoutMinutes = Math.max(
     1,
     readNumber(
@@ -1225,6 +1340,28 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 "Short instruction. Examples: quick scan, full scan, security scan, summarise errors, parse sarif report, write config.",
               default: "quick scan",
             },
+            action: {
+              type: "string",
+              enum: [
+                "scan",
+                "config",
+                "flavors",
+                "linters",
+                "security",
+                "reporters",
+                "parse",
+                "summary",
+                "recommendations",
+              ],
+              description:
+                "Optional explicit action. Use this for deterministic quick workflows.",
+            },
+            scanMode: {
+              type: "string",
+              enum: ["quick", "full", "security", "fix"],
+              description:
+                "Scan preset when action is scan (or request implies a scan).",
+            },
             target: {
               type: "string",
               description: "Directory to scan for run requests. Defaults to .",
@@ -1239,6 +1376,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description:
                 "Report directory for parse, summary, and recommendation requests.",
               default: DEFAULT_REPORTS_PATH,
+            },
+            reportType: {
+              type: "string",
+              enum: ["json", "sarif"],
+              description:
+                "Report format for parse requests. Defaults to json unless sarif is requested.",
+            },
+            severity: {
+              type: "string",
+              enum: ["error", "warning", "info"],
+              description: "Severity filter for summary requests.",
+            },
+            language: {
+              type: "string",
+              description: "Language filter for linter-list requests.",
+            },
+            securityOnly: {
+              type: "boolean",
+              description: "Filter linter-list requests to security linters.",
+              default: false,
+            },
+            autoFixOnly: {
+              type: "boolean",
+              description: "Filter linter-list requests to auto-fix linters.",
+              default: false,
             },
             timeoutMinutes: {
               type: "number",

@@ -72,9 +72,16 @@ Interactive shortcut that accepts a short request and routes it to the right wor
 Inputs:
 
 - `request` (string, optional): Short instruction. Default: `quick scan`.
+- `action` (string, optional): Explicit quick action (`scan`, `config`, `flavors`, `linters`, `security`, `reporters`, `parse`, `summary`, `recommendations`).
+- `scanMode` (string, optional): Scan preset (`quick`, `full`, `security`, `fix`).
 - `target` (string, optional): Directory to scan. Default: `.`.
 - `workingDirectory` (string, optional): Command working directory.
 - `reportsPath` (string, optional): Reports directory. Default: `megalinter-reports`.
+- `reportType` (string, optional): Parse format (`json` or `sarif`).
+- `severity` (string, optional): Summary filter (`error`, `warning`, `info`).
+- `language` (string, optional): Language filter for linter queries.
+- `securityOnly` (boolean, optional): Return only security linters in linter queries.
+- `autoFixOnly` (boolean, optional): Return only auto-fix linters in linter queries.
 - `timeoutMinutes` (number, optional): Timeout for scan actions. Default: `20`.
 - `summaryOnly` (boolean, optional): Return concise output for scans. Default: `true`.
 - `flavor` (string, optional): Optional flavor override for scan actions.
@@ -88,6 +95,8 @@ Examples:
 - `request: "security scan"` -> Runs `security` flavor.
 - `request: "summarise errors"` -> Returns issue summary filtered to errors.
 - `request: "parse sarif report"` -> Parses SARIF output.
+- `action: "summary", severity: "error"` -> Deterministic summary with no phrase parsing.
+- `action: "scan", scanMode: "security"` -> Deterministic security scan.
 
 ### `megalinter_run`
 
@@ -202,6 +211,14 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 ```
 
 **Expected output**: Routes each short request to the correct tool with sensible defaults.
+
+Deterministic alternatives using explicit action fields:
+
+```text
+@megalinter-ox-security run quick action with action summary and severity error
+@megalinter-ox-security run quick action with action parse and reportType sarif
+@megalinter-ox-security run quick action with action scan and scanMode security
+```
 
 ### Run MegaLinter (`megalinter_run`)
 

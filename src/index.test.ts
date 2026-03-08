@@ -233,4 +233,49 @@ describe("MCP tool handlers", () => {
     expect(firstText(result)).toContain("Wrote MegaLinter configuration");
     expect(content).toContain("APPLY_FIXES: none");
   });
+
+  it("quick action supports explicit summary action and severity", async () => {
+    const report = {
+      summary: {
+        total_badges_errors: 2,
+        total_badges_warnings: 7,
+      },
+      linter_runs: [{ linter_name: "REPOSITORY_GITLEAKS", status: "warning" }],
+    };
+
+    await writeFile(
+      path.join(testDir, "megalinter-report.json"),
+      JSON.stringify(report),
+      "utf8",
+    );
+
+    const result = (await handleQuickActionTool({
+      action: "summary",
+      severity: "warning",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(firstText(result)).toContain("**Total Issues**: 7");
+  });
+
+  it("quick action supports explicit parse action and report type", async () => {
+    const report = {
+      version: "2.1.0",
+      runs: [{ tool: { driver: { name: "MegaLinter" } }, results: [] }],
+    };
+
+    await writeFile(
+      path.join(testDir, "megalinter-report.sarif"),
+      JSON.stringify(report),
+      "utf8",
+    );
+
+    const result = (await handleQuickActionTool({
+      action: "parse",
+      reportType: "sarif",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(firstText(result)).toContain("# Parsed SARIF Report");
+  });
 });
