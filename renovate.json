@@ -76,9 +76,10 @@
     },
     {
       "groupName": "GitHub Actions",
-      "matchDatasources": [
-        "github-tags"
+      "matchManagers": [
+        "github-actions"
       ],
+      "pinDigests": true,
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "squash"
