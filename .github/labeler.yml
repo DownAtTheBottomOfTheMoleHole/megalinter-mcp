@@ -1,0 +1,42 @@
+breaking-change:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/index.ts"
+
+enhancement:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/utils.ts"
+
+feature:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/**/*.ts"
+          - "!src/**/*.test.ts"
+
+bug:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/**/*.test.ts"
+          - "src/**/*.ts"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**.md"
+          - "docs/**"
+          - ".github/**/*.md"
+
+maintenance:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "package.json"
+          - "package-lock.json"
+          - "tsconfig*.json"
+          - "vitest.config.ts"
+          - "cspell.json"
+          - "renovate.json"
+          - ".github/workflows/**"
+          - ".github/dependabot.yml"
+          - ".github/labeler.yml"
+          - "GitVersion.yml"
