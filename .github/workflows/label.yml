@@ -1,0 +1,47 @@
+name: Label PR
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    name: Auto-label PR
+    steps:
+      - uses: actions/labeler@8558fd74291d67161a8a78ce36a881fa63b766a9 # v5.0.0
+        with:
+          configuration-path: .github/labeler.yml
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+  renovate-label:
+    runs-on: ubuntu-latest
+    name: Label Renovate PR
+    if: github.actor == 'renovate[bot]'
+    steps:
+      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const labels = ['Renovate', 'maintenance'];
+
+            // Parse PR title to determine semantic version label
+            const title = context.payload.pull_request.title;
+            if (title.includes('major') || title.includes('major version')) {
+              labels.push('Semver Major');
+            } else if (title.includes('minor') || title.includes('minor version')) {
+              labels.push('Semver Minor');
+            } else {
+              // Default to patch for dependency updates
+              labels.push('Semver Patch');
+            }
+
+            github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: labels,
+            });
