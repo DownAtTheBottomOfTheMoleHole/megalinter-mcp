@@ -23,9 +23,6 @@ bug:
       - pattern: '^fix(\(.+\))?:'
   - head-branch:
       - pattern: "fix/.*"
-  - changed-files:
-      - any-glob-to-any-file:
-          - "tests/**/*.ts"
 
 documentation:
   - changed-files:
@@ -35,24 +32,16 @@ documentation:
           - ".github/ISSUE_TEMPLATE/**"
           - ".github/pull_request_template.md"
 
-test:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "tests/**/*.ts"
-          - "**/*.test.ts"
-          - "**/*.spec.ts"
-          - "vitest.config.ts"
-
-ci:
+maintenance:
   - changed-files:
       - any-glob-to-any-file:
           - ".github/workflows/**"
           - ".github/labeler.yml"
           - ".mega-linter.yml"
-
-maintenance:
-  - changed-files:
-      - any-glob-to-any-file:
+          - "tests/**/*.ts"
+          - "**/*.test.ts"
+          - "**/*.spec.ts"
+          - "vitest.config.ts"
           - "package.json"
           - "package-lock.json"
           - "tsconfig*.json"

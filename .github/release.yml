@@ -10,21 +10,14 @@ changelog:
       labels:
         - bug
         - hotfix
-    - title: ":technologist: Developer Experience"
-      labels:
-        - ci
-        - test
     - title: ":memo: Documentation"
       labels:
         - documentation
     - title: ":wrench: Maintenance"
       labels:
         - maintenance
-        - refactor
-        - style
   exclude:
     labels:
       - duplicate
       - invalid
       - wontfix
-      - ignore-for-release
