@@ -275,7 +275,12 @@ jobs:
 
       - name: Install mcp-publisher
         run: |
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          publisher_host="https://github.com"
+          publisher_repo="modelcontextprotocol/registry"
+          publisher_asset="mcp-publisher_${os}_${arch}.tar.gz"
+          curl -L "${publisher_host}/${publisher_repo}/releases/latest/download/${publisher_asset}" | tar xz mcp-publisher
 
       - name: Authenticate to MCP Registry
         run: ./mcp-publisher login github-oidc
@@ -407,5 +412,5 @@ jobs:
           VERSION: ${{ steps.release_version.outputs.value }}
         run: |
           echo "✅ Version: $VERSION"
-          echo "✅ Package published to npm: https://www.npmjs.com/package/@downatthebottomofthemolehole/megalinter-mcp-server"
+          echo "✅ Package published to npm: https://registry.npmjs.org/@downatthebottomofthemolehole/megalinter-mcp-server"
           echo "✅ Server published to MCP Registry: DownAtTheBottomOfTheMoleHole/megalinter-mcp"

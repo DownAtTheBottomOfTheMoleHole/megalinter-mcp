@@ -6,7 +6,7 @@
 
 [![CI/Publish](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/publish-mcp.yml/badge.svg)](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/publish-mcp.yml)
 [![Coverage](https://codecov.io/github/DownAtTheBottomOfTheMoleHole/megalinter-mcp/graph/badge.svg?branch=main)](https://codecov.io/github/DownAtTheBottomOfTheMoleHole/megalinter-mcp)
-[![npm](https://img.shields.io/npm/v/@downatthebottomofthemolehole/megalinter-mcp-server.svg)](https://www.npmjs.com/package/@downatthebottomofthemolehole/megalinter-mcp-server)
+[![npm](https://img.shields.io/npm/v/@downatthebottomofthemolehole/megalinter-mcp-server.svg)](https://registry.npmjs.org/@downatthebottomofthemolehole/megalinter-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen)](https://nodejs.org/)
 
@@ -531,13 +531,13 @@ Quick validation prompt in Copilot Chat:
 
 - [MegaLinter website](https://megalinter.io/) — Comprehensive documentation and configuration guide
 - [MegaLinter repository](https://github.com/oxsecurity/megalinter) — Source code and issue tracking
-- [mega-linter-runner](https://www.npmjs.com/package/mega-linter-runner) — npm package used by this server
+- [mega-linter-runner](https://registry.npmjs.org/mega-linter-runner) — npm package used by this server
 
 ### CI/CD Integrations
 
 - [MegaLinter Azure DevOps Extension](https://github.com/downatthebottomofthemolehole/megalinter-ado) — ADO task by the same author (also sanctioned by Ox Security)
 - GitHub Actions: Use MegaLinter's official [GitHub Action](https://github.com/marketplace/actions/megalinter)
-- GitLab CI/CD: See [MegaLinter GitLab integration docs](https://github.com/oxsecurity/megalinter/blob/main/docs/install-gitlab.md)
+- GitLab CI/CD: See [MegaLinter GitLab integration docs](https://raw.githubusercontent.com/oxsecurity/megalinter/main/docs/install-gitlab.md)
 - Jenkins, CircleCI, and others: Run MegaLinter via Docker in any CI/CD pipeline
 
 ### Model Context Protocol

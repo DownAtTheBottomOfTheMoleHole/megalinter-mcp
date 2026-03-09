@@ -1,22 +1,22 @@
 {
   "ignorePatterns": [
     {
-      "pattern": "^https://registry.modelcontextprotocol.io"
+      "pattern": "^https:\\/\\/registry\\.modelcontextprotocol\\.io"
     },
     {
-      "pattern": "^https://gitversion.net"
+      "pattern": "^https:\\/\\/gitversion\\.net"
     },
     {
-      "pattern": "^https://github.com/.+/settings"
+      "pattern": "^https:\\/\\/github\\.com\\\/.+\\\/settings"
     },
     {
-      "pattern": "^https://github.com/modelcontextprotocol/registry/releases"
+      "pattern": "^https:\\/\\/github\\.com\\\/modelcontextprotocol\\\/registry\\\/releases"
     },
     {
-      "pattern": "^https://www.npmjs.com/package"
+      "pattern": "^https:\\/\\/www\\.npmjs\\.com\\\/package"
     },
     {
-      "pattern": "^https://github.com/oxsecurity/megalinter/blob/main/docs/install"
+      "pattern": "^https:\\/\\/github\\.com\\\/oxsecurity\\\/megalinter\\\/blob\\\/main\\\/docs\\\/install"
     }
   ],
   "timeout": "20s",
