@@ -4,7 +4,9 @@
 
 > **Note:** This is a community-maintained MCP server. It is not an official Model Context Protocol server, but it is **sanctioned by Ox Security** as a complement to their official MegaLinter tools.
 
-[![Release Status](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/publish-mcp.yml/badge.svg?branch=main)](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/publish-mcp.yml)
+[![CI/Publish](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/publish-mcp.yml/badge.svg)](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/publish-mcp.yml)
+[![Coverage](https://codecov.io/github/DownAtTheBottomOfTheMoleHole/megalinter-mcp/graph/badge.svg?branch=main)](https://codecov.io/github/DownAtTheBottomOfTheMoleHole/megalinter-mcp)
+[![npm](https://img.shields.io/npm/v/@downatthebottomofthemolehole/megalinter-mcp-server.svg)](https://www.npmjs.com/package/@downatthebottomofthemolehole/megalinter-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen)](https://nodejs.org/)
 
@@ -251,6 +253,8 @@ Inputs:
 ## Prompt Cookbook
 
 Use these copy/paste prompts in Copilot Chat with `@megalinter`.
+CLI tools default to the current workspace root when no path is given.
+If you add a file or folder as Copilot context (`#file` or `#folder`), reference it in your prompt and the tool will target that path.
 
 ### Quick Actions (`megalinter_quick_action`)
 
@@ -541,15 +545,15 @@ Quick validation prompt in Copilot Chat:
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
 - [MCP servers registry](https://github.com/mcp)
 
-## Community & Contributing
+## Community and Contributing
 
-- 🤝 **[Contributing Guide](./CONTRIBUTING.md)** — Start here to contribute code, report bugs, or request features
-- 📜 **[Code of Conduct](./CODE_OF_CONDUCT.md)** — Expected community behaviour
-- 🔒 **[Security Policy](./SECURITY.md)** — Report vulnerabilities responsibly
-- 🧪 **[Testing Guide](./docs/TESTING.md)** — Manual testing and validation procedures
-- ⚙️ **[Maintainer Guide](./docs/MAINTAINERS.md)** — Release, CI/CD, and dependency update operations
+- [Contributing Guide](./CONTRIBUTING.md)
+- [Code of Conduct](./CODE_OF_CONDUCT.md)
+- [Security Policy](./SECURITY.md)
+- [Testing Guide](./docs/TESTING.md)
+- [Maintainer Guide](./docs/MAINTAINERS.md)
 
-## Attribution & License
+## Attribution and License
 
 Maintained by Carl Dawson under the [Down At The Bottom Of The Mole Hole](https://github.com/downatthebottomofthemolehole) organization.
 
