@@ -4,19 +4,37 @@
       "pattern": "^https://registry.modelcontextprotocol.io"
     },
     {
+      "pattern": "^https://gitversion.net"
+    },
+    {
       "pattern": "^https://github.com/.+/settings"
     },
     {
-      "pattern": "^https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher"
+      "pattern": "^https://github.com/modelcontextprotocol/registry/releases"
+    },
+    {
+      "pattern": "^https://www.npmjs.com/package"
+    },
+    {
+      "pattern": "^https://github.com/oxsecurity/megalinter/blob/main/docs/install"
     }
   ],
   "timeout": "20s",
   "retryOn429": false,
   "retryCount": 2,
-  "aliveStatusCodes": [200, 206, 301, 302, 307, 308],
+  "aliveStatusCodes": [
+    200,
+    206,
+    301,
+    302,
+    307,
+    308
+  ],
   "httpHeaders": [
     {
-      "urls": ["https://github.com"],
+      "urls": [
+        "https://github.com"
+      ],
       "headers": {
         "Accept": "text/html"
       }
