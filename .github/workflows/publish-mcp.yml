@@ -55,20 +55,22 @@ jobs:
 
       - name: Consolidate SARIF reports
         if: success() || failure()
+        id: sarif
         run: |
-          mkdir -p megalinter-reports/sarif
+          sarif_dir="$(mktemp -d)"
           if [ -d "megalinter-reports" ]; then
-            find megalinter-reports -maxdepth 1 -name '*.sarif' -exec cp {} megalinter-reports/sarif/ \;
+            find megalinter-reports -maxdepth 1 -name '*.sarif' -exec cp {} "$sarif_dir/" \;
           else
             echo "No megalinter-reports directory found; skipping SARIF consolidation."
           fi
+          echo "sarif_dir=$sarif_dir" >> "$GITHUB_OUTPUT"
 
       - name: Upload MegaLinter SARIF
         if: success() || failure()
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
         with:
-          sarif_file: megalinter-reports/sarif
+          sarif_file: ${{ steps.sarif.outputs.sarif_dir }}
 
   version-and-tag:
     if: github.event.pull_request.merged == true && github.actor != 'github-actions[bot]'
