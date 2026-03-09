@@ -1,31 +1,54 @@
-breaking-change:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "src/index.ts"
+# yaml-language-server: $schema=https://www.schemastore.org/pull-request-labeler-5.json
+# Labels PRs based on file paths, branch names, and title patterns
+# Mapped to release.yml changelog categories
 
-enhancement:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "src/utils.ts"
+breaking-change:
+  - head-branch:
+      - pattern: ".*breaking.*"
+  - title:
+      - pattern: ".*!:.*"
 
 feature:
+  - title:
+      - pattern: '^feat(\(.+\))?:'
+  - head-branch:
+      - pattern: "feature/.*"
   - changed-files:
       - any-glob-to-any-file:
           - "src/**/*.ts"
           - "!src/**/*.test.ts"
 
 bug:
+  - title:
+      - pattern: '^fix(\(.+\))?:'
+  - head-branch:
+      - pattern: "fix/.*"
   - changed-files:
       - any-glob-to-any-file:
-          - "src/**/*.test.ts"
-          - "src/**/*.ts"
+          - "tests/**/*.ts"
 
 documentation:
   - changed-files:
       - any-glob-to-any-file:
-          - "**.md"
+          - "**/*.md"
           - "docs/**"
-          - ".github/**/*.md"
+          - ".github/ISSUE_TEMPLATE/**"
+          - ".github/pull_request_template.md"
+
+test:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tests/**/*.ts"
+          - "**/*.test.ts"
+          - "**/*.spec.ts"
+          - "vitest.config.ts"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**"
+          - ".github/labeler.yml"
+          - ".mega-linter.yml"
 
 maintenance:
   - changed-files:
@@ -33,10 +56,10 @@ maintenance:
           - "package.json"
           - "package-lock.json"
           - "tsconfig*.json"
-          - "vitest.config.ts"
-          - "cspell.json"
+          - ".eslintrc.json"
+          - ".prettier*"
+          - ".gitignore"
+          - ".gitattributes"
           - "renovate.json"
-          - ".github/workflows/**"
-          - ".github/dependabot.yml"
-          - ".github/labeler.yml"
+          - "cspell.json"
           - "GitVersion.yml"
