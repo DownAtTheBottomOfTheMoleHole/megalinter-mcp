@@ -85,6 +85,7 @@
     "pyproject",
     "pylint",
     "repos",
+    "renovatebot",
     "rustfmt",
     "sarif",
     "SEMGREP",
