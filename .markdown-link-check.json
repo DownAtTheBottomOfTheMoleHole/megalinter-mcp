@@ -5,13 +5,15 @@
     },
     {
       "pattern": "^https://github.com/.+/settings"
+    },
+    {
+      "pattern": "^https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher"
     }
   ],
   "timeout": "20s",
-  "retryOn429": true,
-  "retryCount": 3,
-  "fallbackRetryDelay": "30s",
-  "aliveStatusCodes": [200, 206, 301, 302, 307, 308, 403],
+  "retryOn429": false,
+  "retryCount": 2,
+  "aliveStatusCodes": [200, 206, 301, 302, 307, 308],
   "httpHeaders": [
     {
       "urls": ["https://github.com"],

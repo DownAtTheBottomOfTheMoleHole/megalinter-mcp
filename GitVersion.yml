@@ -1,3 +1,4 @@
+# https://gitversion.net/docs/reference/yaml
 workflow: GitHubFlow/v1
 
 mode: ContinuousDelivery

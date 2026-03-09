@@ -364,7 +364,7 @@ jobs:
               '',
               '### :robot: VS Code Copilot Chat Example',
               '```text',
-              '@megalinter-ox-security run MegaLinter with:',
+              '@megalinter run MegaLinter with:',
               '- workingDirectory: ${workspaceFolder}',
               '- path: src',
               '- flavor: javascript',

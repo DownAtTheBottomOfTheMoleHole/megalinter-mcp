@@ -1305,7 +1305,7 @@ export async function handleGetIssueSummaryTool(args: ToolArgs) {
       content: [
         {
           type: "text",
-          text: `Error analyzing issues: ${errorMessage}`,
+          text: `Error analysing issues: ${errorMessage}`,
         },
       ],
       isError: true,

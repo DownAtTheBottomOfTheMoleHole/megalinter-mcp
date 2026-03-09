@@ -1,12 +1,8 @@
-# MegaLinter Configuration
+# MegaLinter Configuration for megalinter-mcp
 # Comprehensive linting and compliance checking for the MCP server project
 # Reference: https://megalinter.io/latest/configuration/
 
-MEGALINTER_COMMENT: true
-MEGALINTER_COMMENT_PR_REQUEST_CHANGES: true
-GITHUB_COMMENT_PR_REQUEST_CHANGES: true
-
-# Enable linters by language/format group
+# Core linting configuration
 ENABLE:
   - MARKDOWN
   - JSON
@@ -18,25 +14,12 @@ ENABLE:
 DISABLE_LINTERS:
   - TYPESCRIPT_STANDARD
 
-# Disable specific linters for GitHub workflows (they have YAML frontmatter)
-MARKDOWN_MARKDOWNLINT_DISABLED: false
+# Markdown linting
 MARKDOWN_MARKDOWNLINT_FILTER_REGEX_EXCLUDE: |
   \.github/(?:ISSUE_TEMPLATE|pull_request_template)\.md|LICENSE
 
-# TypeScript linting
-TYPESCRIPT_ES_TARGET: ES2022
-TYPESCRIPT_ESLINT_CONFIG_FILE: .eslintrc.json
-
 # Spelling checker
 SPELL_CSPELL_CONFIG_FILE: cspell.json
-SPELL_CSPELL_FILE_EXTENSIONS:
-  - .ts
-  - .js
-  - .json
-  - .md
-  - .yaml
-  - .yml
-
 SPELL_CSPELL_DISABLE_ERRORS: true
 
 # Files to exclude from all linters
@@ -47,15 +30,3 @@ EXCLUDED_DIRECTORIES:
   - .git
   - .vscode
   - .tmp*
-
-# Report configuration
-REPORT_FOLDER: megalinter-reports
-CREATE_SARIF_REPORT: true
-CREATE_MARKDOWN_SUMMARY: true
-
-# Fail if any error found (set to true for strict mode)
-FAIL_IF_ERRORS: true
-FAIL_IF_WARNINGS: false
-
-# Timeout for linter execution (seconds)
-LINTER_TIMEOUT: 60
