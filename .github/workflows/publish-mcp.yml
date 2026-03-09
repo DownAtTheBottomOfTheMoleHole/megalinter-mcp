@@ -57,7 +57,11 @@ jobs:
         if: success() || failure()
         run: |
           mkdir -p megalinter-reports/sarif
-          find megalinter-reports -maxdepth 1 -name '*.sarif' -exec cp {} megalinter-reports/sarif/ \;
+          if [ -d "megalinter-reports" ]; then
+            find megalinter-reports -maxdepth 1 -name '*.sarif' -exec cp {} megalinter-reports/sarif/ \;
+          else
+            echo "No megalinter-reports directory found; skipping SARIF consolidation."
+          fi
 
       - name: Upload MegaLinter SARIF
         if: success() || failure()
