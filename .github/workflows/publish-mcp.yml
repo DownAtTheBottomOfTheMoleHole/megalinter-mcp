@@ -2,12 +2,14 @@ name: Release
 
 on:
   pull_request:
-    types: [closed]
+    types: [opened, synchronize, reopened, closed]
     branches:
       - main
+  schedule:
+    - cron: "0 0 * * 1"
 
 concurrency:
-  group: release-${{ github.event.pull_request.base.ref }}
+  group: release-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -16,6 +18,54 @@ permissions:
   id-token: write
 
 jobs:
+  megalinter:
+    if: github.event_name == 'schedule' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+    name: MegaLinter Security & Quality Scan
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      statuses: write
+      security-events: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: MegaLinter
+        uses: oxsecurity/megalinter@8fbdead70d1409964ab3d5afa885e18ee85388bb # v9
+        id: ml
+        env:
+          VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'schedule' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLY_FIXES: ${{ github.event_name == 'pull_request' && 'all' || 'none' }}
+
+      - name: Upload MegaLinter reports
+        if: success() || failure()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        with:
+          name: MegaLinter reports
+          include-hidden-files: true
+          path: |
+            megalinter-reports
+            mega-linter.log
+
+      - name: Consolidate SARIF reports
+        if: success() || failure()
+        run: |
+          mkdir -p megalinter-reports/sarif
+          find megalinter-reports -maxdepth 1 -name '*.sarif' -exec cp {} megalinter-reports/sarif/ \;
+
+      - name: Upload MegaLinter SARIF
+        if: success() || failure()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
+        with:
+          sarif_file: megalinter-reports/sarif
+
   version-and-tag:
     if: github.event.pull_request.merged == true && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
