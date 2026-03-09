@@ -15,6 +15,9 @@ ENABLE:
   - BASH
   - SPELL
 
+DISABLE_LINTERS:
+  - TYPESCRIPT_STANDARD
+
 # Disable specific linters for GitHub workflows (they have YAML frontmatter)
 MARKDOWN_MARKDOWNLINT_DISABLED: false
 MARKDOWN_MARKDOWNLINT_FILTER_REGEX_EXCLUDE: |
