@@ -258,6 +258,34 @@ describe("MCP tool handlers", () => {
     expect(firstText(result)).toContain("**Total Issues**: 7");
   });
 
+  it("quick action supports explicit summary action with linter filter", async () => {
+    const report = {
+      summary: {
+        total_badges_errors: 4,
+        total_badges_warnings: 0,
+      },
+      linter_runs: [
+        { linter_name: "ESLint", status: "error" },
+        { linter_name: "REPOSITORY_GITLEAKS", status: "error" },
+      ],
+    };
+
+    await writeFile(
+      path.join(testDir, "megalinter-report.json"),
+      JSON.stringify(report),
+      "utf8",
+    );
+
+    const result = (await handleQuickActionTool({
+      action: "summary",
+      linterFilter: "eslint",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(firstText(result)).toContain("- ESLint: 1 runs");
+    expect(firstText(result)).not.toContain("REPOSITORY_GITLEAKS");
+  });
+
   it("quick action supports explicit parse action and report type", async () => {
     const report = {
       version: "2.1.0",
@@ -279,16 +307,16 @@ describe("MCP tool handlers", () => {
     expect(firstText(result)).toContain("# Parsed SARIF Report");
   });
 
-  it("scan alias sets action=scan and accepts other parameters", async () => {
-    const { handleScanAlias } = await import("./index.js");
+  it("scan alias tool delegates to quick action with action=scan", async () => {
+    const { handleScanTool } = await import("./index.js");
     // This alias sets action="scan" internally, which we can verify by type-checking
     // We don't actually run the scan in this test to keep it fast
-    expect(handleScanAlias).toBeDefined();
-    expect(typeof handleScanAlias).toBe("function");
+    expect(handleScanTool).toBeDefined();
+    expect(typeof handleScanTool).toBe("function");
   });
 
-  it("summary alias delegates to quick action with action=summary", async () => {
-    const { handleSummaryAlias } = await import("./index.js");
+  it("summary alias tool delegates to quick action with action=summary", async () => {
+    const { handleSummaryTool } = await import("./index.js");
 
     await writeFile(
       path.join(testDir, "megalinter-report.json"),
@@ -312,17 +340,19 @@ describe("MCP tool handlers", () => {
       "utf8",
     );
 
-    const result = (await handleSummaryAlias({
+    const result = (await handleSummaryTool({
       severity: "error",
+      linterFilter: "eslint",
       reportsPath: testDir,
     })) as ToolTextResult;
 
     expect(firstText(result)).toContain("# Issue Summary");
     expect(firstText(result)).toContain("error");
+    expect(firstText(result)).toContain("- Linter: eslint");
   });
 
-  it("parse alias delegates to quick action with action=parse", async () => {
-    const { handleParseAlias } = await import("./index.js");
+  it("parse alias tool delegates to quick action with action=parse", async () => {
+    const { handleParseTool } = await import("./index.js");
 
     await writeFile(
       path.join(testDir, "megalinter-report.json"),
@@ -332,7 +362,7 @@ describe("MCP tool handlers", () => {
       "utf8",
     );
 
-    const result = (await handleParseAlias({
+    const result = (await handleParseTool({
       reportType: "json",
       reportsPath: testDir,
     })) as ToolTextResult;
@@ -346,6 +376,16 @@ describe("MCP tool handlers", () => {
 
     expect(firstText(result)).toContain("# MegaLinter Quick Help");
     expect(firstText(result)).toContain("Ultra-short aliases");
+  });
+
+  it("scan with unsupported language returns actionable error", async () => {
+    const result = (await handleQuickActionTool({
+      action: "scan",
+      language: "docker",
+    })) as ToolTextResult & { isError?: boolean };
+
+    expect(result.isError).toBe(true);
+    expect(firstText(result)).toContain("Unsupported scan language: docker");
   });
 });
 

@@ -407,6 +407,33 @@ const LINTER_LANGUAGE_HINTS = [
   "typescript",
 ];
 
+const SCAN_LANGUAGE_TO_FLAVOR: Record<string, string> = {
+  c: "c_cpp",
+  cpp: "c_cpp",
+  "c++": "c_cpp",
+  csharp: "dotnet",
+  "c#": "dotnet",
+  dotnet: "dotnet",
+  dotnetweb: "dotnetweb",
+  go: "go",
+  java: "java",
+  javascript: "javascript",
+  js: "javascript",
+  node: "javascript",
+  nodejs: "javascript",
+  typescript: "javascript",
+  ts: "javascript",
+  php: "php",
+  python: "python",
+  py: "python",
+  ruby: "ruby",
+  rust: "rust",
+  terraform: "terraform",
+  tf: "terraform",
+  swift: "swift",
+  salesforce: "salesforce",
+};
+
 const server = new Server(
   {
     name: "megalinter-ox-mcp-server",
@@ -670,6 +697,19 @@ function getLanguageFromText(request: string): string | undefined {
   return undefined;
 }
 
+function mapScanLanguageToFlavor(language: string): string | undefined {
+  const normalised = language.trim().toLowerCase();
+  if (!normalised) {
+    return undefined;
+  }
+
+  if (KNOWN_FLAVORS.includes(normalised)) {
+    return normalised;
+  }
+
+  return SCAN_LANGUAGE_TO_FLAVOR[normalised];
+}
+
 function getSeverityFromText(
   request: string,
 ): "error" | "warning" | "info" | undefined {
@@ -930,9 +970,12 @@ export async function handleQuickActionTool(args: ToolArgs) {
         "warning",
         "info",
       ]) ?? getSeverityFromText(request);
+    const linterFilter =
+      readString(args, "linterFilter") ?? readString(args, "linter");
     return handleGetIssueSummaryTool({
       reportsPath: readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH,
       severityFilter: severity,
+      linterFilter,
     });
   }
 
@@ -1017,6 +1060,29 @@ export async function handleQuickActionTool(args: ToolArgs) {
     runArgs.flavor = "ci_light";
     runArgs.fix = true;
     runArgs.lintChangedFilesOnly = true;
+  }
+
+  const scanLanguage = readString(args, "language") ?? getLanguageFromText(request);
+  if (scanLanguage) {
+    const languageFlavor = mapScanLanguageToFlavor(scanLanguage);
+    if (!languageFlavor) {
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              `Unsupported scan language: ${scanLanguage}. ` +
+              "Use a known flavor (for example: javascript, python, terraform) via flavor.",
+          },
+        ],
+        isError: true,
+      };
+    }
+    runArgs.flavor = languageFlavor;
+  }
+
+  if (readBool(args, "securityOnly")) {
+    runArgs.flavor = "security";
   }
 
   const explicitFlavor = readString(args, "flavor");
@@ -1448,22 +1514,22 @@ export async function handleHelpQuickTool() {
       responseText += "## Security Recommendations\n\n";
       responseText += "Your project has `.env` files. Consider:\n";
       responseText += "- **Shorthand:** `security scan`\n";
-      responseText += "- **Explicit:** `{ \"action\": \"scan\", \"securityOnly\": true }`\n\n";
+      responseText += "- **Explicit:** `{ \"action\": \"scan\", \"scanMode\": \"security\" }`\n\n";
     }
 
     // Infrastructure suggestions
     if (context.hasDocker) {
       responseText += "## Docker detected\n\n";
-      responseText += "Run Dockerfile linters:\n";
-      responseText += "- **Shorthand:** `scan docker`\n";
-      responseText += "- **Explicit:** `{ \"action\": \"scan\", \"language\": \"docker\" }`\n\n";
+      responseText += "Review Docker-focused linters:\n";
+      responseText += "- **Shorthand:** `list dockerfile linters`\n";
+      responseText += "- **Explicit:** `{ \"action\": \"linters\", \"language\": \"dockerfile\" }`\n\n";
     }
 
     if (context.hasTerraform) {
       responseText += "## Terraform detected\n\n";
       responseText += "Validate IaC:\n";
       responseText += "- **Shorthand:** `terraform security scan`\n";
-      responseText += "- **Explicit:** `{ \"action\": \"scan\", \"language\": \"terraform\", \"securityOnly\": true }`\n\n";
+      responseText += "- **Explicit:** `{ \"action\": \"scan\", \"language\": \"terraform\", \"scanMode\": \"security\" }`\n\n";
     }
 
     // Generic examples
@@ -1503,23 +1569,30 @@ export async function handleHelpQuickTool() {
 }
 
 /**
+ * Ultra-short alias: help_quick
+ */
+export async function handleHelpQuickAliasTool() {
+  return handleHelpQuickTool();
+}
+
+/**
  * Ultra-short alias: scan
  */
-export async function handleScanAlias(args: ToolArgs) {
+export async function handleScanTool(args: ToolArgs) {
   return handleQuickActionTool({ ...args, action: "scan" });
 }
 
 /**
  * Ultra-short alias: summary
  */
-export async function handleSummaryAlias(args: ToolArgs) {
+export async function handleSummaryTool(args: ToolArgs) {
   return handleQuickActionTool({ ...args, action: "summary" });
 }
 
 /**
  * Ultra-short alias: parse
  */
-export async function handleParseAlias(args: ToolArgs) {
+export async function handleParseTool(args: ToolArgs) {
   return handleQuickActionTool({ ...args, action: "parse" });
 }
 
@@ -1587,13 +1660,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               enum: ["error", "warning", "info"],
               description: "Severity filter for summary requests.",
             },
+            linterFilter: {
+              type: "string",
+              description: "Linter filter for summary requests.",
+            },
             language: {
               type: "string",
-              description: "Language filter for linter-list requests.",
+              description:
+                "Language filter for linter-list requests. For scans, this maps to a flavor hint (e.g., python -> python, typescript -> javascript).",
             },
             securityOnly: {
               type: "boolean",
-              description: "Filter linter-list requests to security linters.",
+              description:
+                "Filter linter-list requests to security linters. For scans, forces security flavor.",
               default: false,
             },
             autoFixOnly: {
@@ -1906,7 +1985,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             language: {
               type: "string",
-              description: "Target language (e.g., python, javascript).",
+              description:
+                "Target language to map into a scan flavor (e.g., python, javascript, terraform).",
             },
             scanMode: {
               type: "string",
@@ -1935,11 +2015,21 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               enum: ["error", "warning", "info"],
               description: "Filter by severity level.",
             },
-            linter: {
+            linterFilter: {
               type: "string",
               description: "Filter by linter name.",
             },
           },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "help_quick",
+        description:
+          "Ultra-short alias for context-aware help. Same as megalinter_help_quick.",
+        inputSchema: {
+          type: "object",
+          properties: {},
           additionalProperties: false,
         },
       },
@@ -2023,15 +2113,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   if (request.params.name === "scan") {
-    return handleScanAlias(args);
+    return handleScanTool(args);
   }
 
   if (request.params.name === "summary") {
-    return handleSummaryAlias(args);
+    return handleSummaryTool(args);
+  }
+
+  if (request.params.name === "help_quick") {
+    return handleHelpQuickAliasTool();
   }
 
   if (request.params.name === "parse") {
-    return handleParseAlias(args);
+    return handleParseTool(args);
   }
 
   return {

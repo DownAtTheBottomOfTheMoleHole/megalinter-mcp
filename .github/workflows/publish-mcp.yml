@@ -41,7 +41,7 @@ jobs:
         env:
           VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'schedule' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLY_FIXES: ${{ github.event_name == 'pull_request' && 'all' || 'none' }}
+          APPLY_FIXES: ${{ github.event_name == 'pull_request' && github.actor != 'github-actions[bot]' && github.event.pull_request.head.repo.fork == false && 'all' || 'none' }}
 
       - name: Upload MegaLinter reports
         if: success() || failure()

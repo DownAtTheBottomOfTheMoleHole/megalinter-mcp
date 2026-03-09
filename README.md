@@ -14,7 +14,7 @@ A Model Context Protocol (MCP) server for running [Ox Security MegaLinter](https
 
 ## Overview
 
-This server provides ten MCP tools across execution, discovery, and analysis workflows:
+This server provides 15 MCP tools in total: 10 core tools and 5 convenience aliases across execution, discovery, and analysis workflows.
 
 - `megalinter_quick_action` for short, natural requests with sensible defaults.
 - `megalinter_run` to execute MegaLinter with configurable runtime and runner options.
@@ -65,6 +65,7 @@ The only requirement is Docker (or a compatible container runtime like Colima).
 | `scan` | Alias | Ultra-short alias for quick scan |
 | `summary` | Alias | Ultra-short alias for error summary |
 | `parse` | Alias | Ultra-short alias for report parsing |
+| `help_quick` | Alias | Ultra-short alias for context-aware help |
 | `megalinter_help_quick` | Help | Context-aware suggestions for your project |
 | `megalinter_run` | Execution | Run linting and produce report artefacts |
 | `megalinter_write_config` | Configuration | Generate baseline `.mega-linter.yml` |
@@ -92,8 +93,8 @@ Inputs:
 - `reportsPath` (string, optional): Reports directory. Default: `megalinter-reports`.
 - `reportType` (string, optional): Parse format (`json` or `sarif`).
 - `severity` (string, optional): Summary filter (`error`, `warning`, `info`).
-- `language` (string, optional): Language filter for linter queries.
-- `securityOnly` (boolean, optional): Return only security linters in linter queries.
+- `language` (string, optional): Language filter for linter queries. For scans, maps to a flavor hint (`python`, `javascript`, `terraform`, and similar).
+- `securityOnly` (boolean, optional): Return only security linters in linter queries. For scans, forces `security` flavor.
 - `autoFixOnly` (boolean, optional): Return only auto-fix linters in linter queries.
 - `timeoutMinutes` (number, optional): Timeout for scan actions. Default: `20`.
 - `summaryOnly` (boolean, optional): Return concise output for scans. Default: `true`.
@@ -117,7 +118,7 @@ Run a quick scan with minimal typing. Accepts optional parameters for customizat
 
 Inputs:
 
-- `language` (string, optional): Target language (e.g., `python`, `javascript`).
+- `language` (string, optional): Target language mapped to flavor (e.g., `python`, `javascript`, `terraform`).
 - `scanMode` (string, optional): Scan preset (`quick`, `full`, `security`, `fix`). Default: `quick`.
 - `summaryOnly` (boolean, optional): Return concise output. Default: `true`.
 
@@ -130,7 +131,7 @@ Summarise errors from the last MegaLinter run with minimal typing.
 Inputs:
 
 - `severity` (string, optional): Filter by severity (`error`, `warning`, `info`).
-- `linter` (string, optional): Filter by linter name.
+- `linterFilter` (string, optional): Filter by linter name.
 
 Example: `@megalinter summary` shows all error/warning totals.
 
