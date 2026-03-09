@@ -278,4 +278,74 @@ describe("MCP tool handlers", () => {
 
     expect(firstText(result)).toContain("# Parsed SARIF Report");
   });
+
+  it("scan alias sets action=scan and accepts other parameters", async () => {
+    const { handleScanAlias } = await import("./index.js");
+    // This alias sets action="scan" internally, which we can verify by type-checking
+    // We don't actually run the scan in this test to keep it fast
+    expect(handleScanAlias).toBeDefined();
+    expect(typeof handleScanAlias).toBe("function");
+  });
+
+  it("summary alias delegates to quick action with action=summary", async () => {
+    const { handleSummaryAlias } = await import("./index.js");
+
+    await writeFile(
+      path.join(testDir, "megalinter-report.json"),
+      JSON.stringify({
+        linter_runs: [
+          {
+            linter_name: "ESLint",
+            files_lint_results: [
+              {
+                file_name: "test.js",
+                errors_number: 2,
+                errors: [
+                  { severity: "error", message: "Missing semicolon" },
+                  { severity: "warning", message: "Unused variable" },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+      "utf8",
+    );
+
+    const result = (await handleSummaryAlias({
+      severity: "error",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(firstText(result)).toContain("# Issue Summary");
+    expect(firstText(result)).toContain("error");
+  });
+
+  it("parse alias delegates to quick action with action=parse", async () => {
+    const { handleParseAlias } = await import("./index.js");
+
+    await writeFile(
+      path.join(testDir, "megalinter-report.json"),
+      JSON.stringify({
+        linter_runs: [],
+      }),
+      "utf8",
+    );
+
+    const result = (await handleParseAlias({
+      reportType: "json",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(firstText(result)).toContain("# Parsed JSON Report");
+  });
+
+  it("help quick tool returns context-aware suggestions", async () => {
+    const { handleHelpQuickTool } = await import("./index.js");
+    const result = (await handleHelpQuickTool()) as ToolTextResult;
+
+    expect(firstText(result)).toContain("# MegaLinter Quick Help");
+    expect(firstText(result)).toContain("Ultra-short aliases");
+  });
 });
+

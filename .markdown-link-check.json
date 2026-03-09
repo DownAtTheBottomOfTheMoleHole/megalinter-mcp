@@ -1,6 +1,9 @@
 {
   "ignorePatterns": [
     {
+      "pattern": "^https://registry.modelcontextprotocol.io"
+    },
+    {
       "pattern": "^https://github.com/.+/settings"
     }
   ],

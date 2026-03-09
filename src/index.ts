@@ -688,6 +688,101 @@ function getSeverityFromText(
   return undefined;
 }
 
+/**
+ * Detect languages and frameworks present in the current repository by inspecting common files.
+ */
+async function detectProjectContext(): Promise<{
+  languages: string[];
+  frameworks: string[];
+  hasDocker: boolean;
+  hasTerraform: boolean;
+  hasSecurity: boolean;
+}> {
+  const { readFile } = await import("node:fs/promises");
+  const { existsSync } = await import("node:fs");
+
+  const languages: string[] = [];
+  const frameworks: string[] = [];
+  let hasDocker = false;
+  let hasTerraform = false;
+  let hasSecurity = false;
+
+  // Detect languages via package managers and config files
+  if (existsSync("package.json")) {
+    languages.push("javascript");
+    try {
+      const pkg = JSON.parse(await readFile("package.json", "utf-8")) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const allDeps = {
+        ...pkg.dependencies,
+        ...pkg.devDependencies,
+      };
+      if (allDeps.typescript) {
+        languages.push("typescript");
+      }
+      if (allDeps.react) {
+        frameworks.push("React");
+      }
+      if (allDeps.vue) {
+        frameworks.push("Vue");
+      }
+      if (allDeps.angular) {
+        frameworks.push("Angular");
+      }
+    } catch {
+      /* ignore parse errors */
+    }
+  }
+
+  if (existsSync("requirements.txt") || existsSync("setup.py") || existsSync("pyproject.toml")) {
+    languages.push("python");
+  }
+
+  if (existsSync("Cargo.toml")) {
+    languages.push("rust");
+  }
+
+  if (existsSync("go.mod")) {
+    languages.push("go");
+  }
+
+  if (existsSync("Gemfile")) {
+    languages.push("ruby");
+  }
+
+  if (existsSync("composer.json")) {
+    languages.push("php");
+  }
+
+  if (existsSync("pom.xml") || existsSync("build.gradle")) {
+    languages.push("java");
+  }
+
+  // Detect infrastructure
+  if (existsSync("Dockerfile") || existsSync("docker-compose.yml")) {
+    hasDocker = true;
+  }
+
+  if (existsSync("main.tf") || existsSync("terraform.tf")) {
+    hasTerraform = true;
+  }
+
+  // Detect security concerns
+  if (existsSync(".env") || existsSync(".env.example")) {
+    hasSecurity = true;
+  }
+
+  return {
+    languages: [...new Set(languages)],
+    frameworks,
+    hasDocker,
+    hasTerraform,
+    hasSecurity,
+  };
+}
+
 async function runCommand(
   command: string,
   commandArgs: string[],
@@ -1324,6 +1419,110 @@ async function handleGetSecurityRecommendationsTool(args: ToolArgs) {
   }
 }
 
+/**
+ * Context-aware help tool that provides suggestions based on the current repository.
+ */
+export async function handleHelpQuickTool() {
+  try {
+    const context = await detectProjectContext();
+
+    let responseText = "# MegaLinter Quick Help\n\n";
+    responseText += "Based on your project, here are suggested commands:\n\n";
+
+    // Language-specific suggestions
+    if (context.languages.length > 0) {
+      responseText += `## Detected Languages: ${context.languages.join(", ")}\n\n`;
+      responseText += "**Shorthand examples:**\n";
+      for (const lang of context.languages.slice(0, 2)) {
+        responseText += `- \`list ${lang} linters\`\n`;
+        responseText += `- \`quick ${lang} scan\`\n`;
+      }
+      responseText += "\n**Explicit examples:**\n";
+      responseText += "```json\n";
+      responseText += `{ "action": "scan", "language": "${context.languages[0]}", "scanMode": "quick" }\n`;
+      responseText += "```\n\n";
+    }
+
+    // Security suggestions
+    if (context.hasSecurity) {
+      responseText += "## Security Recommendations\n\n";
+      responseText += "Your project has `.env` files. Consider:\n";
+      responseText += "- **Shorthand:** `security scan`\n";
+      responseText += "- **Explicit:** `{ \"action\": \"scan\", \"securityOnly\": true }`\n\n";
+    }
+
+    // Infrastructure suggestions
+    if (context.hasDocker) {
+      responseText += "## Docker detected\n\n";
+      responseText += "Run Dockerfile linters:\n";
+      responseText += "- **Shorthand:** `scan docker`\n";
+      responseText += "- **Explicit:** `{ \"action\": \"scan\", \"language\": \"docker\" }`\n\n";
+    }
+
+    if (context.hasTerraform) {
+      responseText += "## Terraform detected\n\n";
+      responseText += "Validate IaC:\n";
+      responseText += "- **Shorthand:** `terraform security scan`\n";
+      responseText += "- **Explicit:** `{ \"action\": \"scan\", \"language\": \"terraform\", \"securityOnly\": true }`\n\n";
+    }
+
+    // Generic examples
+    responseText += "## Common Commands\n\n";
+    responseText += "### Ultra-short aliases\n";
+    responseText += "- `scan` — Run a quick scan\n";
+    responseText += "- `summary` — Summarise errors from last run\n";
+    responseText += "- `parse` — Parse JSON report\n\n";
+
+    responseText += "### Quick Actions (shorthand)\n";
+    responseText += "- `quick scan`\n";
+    responseText += "- `full scan`\n";
+    responseText += "- `security scan`\n";
+    responseText += "- `summarise errors`\n";
+    responseText += "- `list python linters`\n\n";
+
+    responseText += "### Quick Actions (explicit)\n";
+    responseText += "- `{ \"action\": \"scan\", \"scanMode\": \"quick\" }`\n";
+    responseText += "- `{ \"action\": \"summary\", \"severity\": \"error\" }`\n";
+    responseText += "- `{ \"action\": \"parse\", \"reportType\": \"sarif\" }`\n";
+
+    return {
+      content: [{ type: "text", text: responseText }],
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Error generating help: ${errorMessage}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Ultra-short alias: scan
+ */
+export async function handleScanAlias(args: ToolArgs) {
+  return handleQuickActionTool({ ...args, action: "scan" });
+}
+
+/**
+ * Ultra-short alias: summary
+ */
+export async function handleSummaryAlias(args: ToolArgs) {
+  return handleQuickActionTool({ ...args, action: "summary" });
+}
+
+/**
+ * Ultra-short alias: parse
+ */
+export async function handleParseAlias(args: ToolArgs) {
+  return handleQuickActionTool({ ...args, action: "parse" });
+}
+
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
@@ -1688,6 +1887,83 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           additionalProperties: false,
         },
       },
+      {
+        name: "megalinter_help_quick",
+        description:
+          "Get context-aware help and examples based on your current repository. Suggests relevant commands for detected languages and frameworks.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "scan",
+        description:
+          "Ultra-short alias for quick scan. Same as megalinter_quick_action with action='scan'.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            language: {
+              type: "string",
+              description: "Target language (e.g., python, javascript).",
+            },
+            scanMode: {
+              type: "string",
+              enum: ["quick", "full", "security", "fix"],
+              description: "Scan preset mode.",
+              default: "quick",
+            },
+            summaryOnly: {
+              type: "boolean",
+              description: "Return concise output.",
+              default: true,
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "summary",
+        description:
+          "Ultra-short alias for error summary. Same as megalinter_quick_action with action='summary'.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            severity: {
+              type: "string",
+              enum: ["error", "warning", "info"],
+              description: "Filter by severity level.",
+            },
+            linter: {
+              type: "string",
+              description: "Filter by linter name.",
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "parse",
+        description:
+          "Ultra-short alias for report parsing. Same as megalinter_quick_action with action='parse'.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            reportType: {
+              type: "string",
+              enum: ["json", "sarif"],
+              description: "Type of report to parse.",
+              default: "json",
+            },
+            reportsPath: {
+              type: "string",
+              description: "Reports directory path.",
+            },
+          },
+          additionalProperties: false,
+        },
+      },
     ],
   };
 });
@@ -1740,6 +2016,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (request.params.name === "megalinter_get_security_recommendations") {
     return handleGetSecurityRecommendationsTool(args);
+  }
+
+  if (request.params.name === "megalinter_help_quick") {
+    return handleHelpQuickTool();
+  }
+
+  if (request.params.name === "scan") {
+    return handleScanAlias(args);
+  }
+
+  if (request.params.name === "summary") {
+    return handleSummaryAlias(args);
+  }
+
+  if (request.params.name === "parse") {
+    return handleParseAlias(args);
   }
 
   return {

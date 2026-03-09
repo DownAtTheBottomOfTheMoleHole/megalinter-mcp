@@ -18,6 +18,7 @@ megalinter-reports/
 
 # Internal documentation (not for public distribution)
 .github/copilot-instructions.md
+.github/.copilot-instructions.md
 
 # Test artifacts
 coverage/
