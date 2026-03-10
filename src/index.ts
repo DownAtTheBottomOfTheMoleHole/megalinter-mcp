@@ -407,6 +407,10 @@ const LINTER_LANGUAGE_HINTS = [
   "typescript",
 ];
 
+const SORTED_LINTER_LANGUAGE_HINTS = [...LINTER_LANGUAGE_HINTS].sort(
+  (left, right) => right.length - left.length,
+);
+
 const SCAN_LANGUAGE_TO_FLAVOR: Record<string, string> = {
   c: "c_cpp",
   cpp: "c_cpp",
@@ -433,6 +437,14 @@ const SCAN_LANGUAGE_TO_FLAVOR: Record<string, string> = {
   swift: "swift",
   salesforce: "salesforce",
 };
+
+const SCAN_LANGUAGE_HINTS = Array.from(
+  new Set([...KNOWN_FLAVORS, ...Object.keys(SCAN_LANGUAGE_TO_FLAVOR)]),
+);
+
+const SORTED_SCAN_LANGUAGE_HINTS = [...SCAN_LANGUAGE_HINTS].sort(
+  (left, right) => right.length - left.length,
+);
 
 const server = new Server(
   {
@@ -681,12 +693,11 @@ function getQuickRunPreset(request: string): QuickRunPreset {
   return "quick";
 }
 
-function getLanguageFromText(request: string): string | undefined {
-  const orderedLanguages = [...LINTER_LANGUAGE_HINTS].sort(
-    (left, right) => right.length - left.length,
-  );
-
-  for (const language of orderedLanguages) {
+function getLanguageFromText(
+  request: string,
+  languageHints: readonly string[],
+): string | undefined {
+  for (const language of languageHints) {
     const escaped = language.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const tokenPattern = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`);
     if (tokenPattern.test(request)) {
@@ -992,7 +1003,9 @@ export async function handleQuickActionTool(args: ToolArgs) {
   }
 
   if (intent === "list_linters") {
-    const language = readString(args, "language") ?? getLanguageFromText(request);
+    const language =
+      readString(args, "language") ??
+      getLanguageFromText(request, SORTED_LINTER_LANGUAGE_HINTS);
     const securityOnly = readBool(
       args,
       "securityOnly",
@@ -1062,7 +1075,9 @@ export async function handleQuickActionTool(args: ToolArgs) {
     runArgs.lintChangedFilesOnly = true;
   }
 
-  const scanLanguage = readString(args, "language") ?? getLanguageFromText(request);
+  const scanLanguage =
+    readString(args, "language") ??
+    getLanguageFromText(request, SORTED_SCAN_LANGUAGE_HINTS);
   if (scanLanguage) {
     const languageFlavor = mapScanLanguageToFlavor(scanLanguage);
     if (!languageFlavor) {
@@ -1537,7 +1552,8 @@ export async function handleHelpQuickTool() {
     responseText += "### Ultra-short aliases\n";
     responseText += "- `scan` — Run a quick scan\n";
     responseText += "- `summary` — Summarise errors from last run\n";
-    responseText += "- `parse` — Parse JSON report\n\n";
+    responseText += "- `parse` — Parse JSON report\n";
+    responseText += "- `help_quick` — Show context-aware help\n\n";
 
     responseText += "### Quick Actions (shorthand)\n";
     responseText += "- `quick scan`\n";
@@ -2018,6 +2034,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             linterFilter: {
               type: "string",
               description: "Filter by linter name.",
+            },
+            reportsPath: {
+              type: "string",
+              description: "Reports directory path.",
             },
           },
           additionalProperties: false,

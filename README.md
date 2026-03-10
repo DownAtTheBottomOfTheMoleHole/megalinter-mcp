@@ -8,7 +8,7 @@
 [![Coverage](https://codecov.io/github/DownAtTheBottomOfTheMoleHole/megalinter-mcp/graph/badge.svg?branch=main)](https://codecov.io/github/DownAtTheBottomOfTheMoleHole/megalinter-mcp)
 [![npm](https://img.shields.io/npm/v/@downatthebottomofthemolehole/megalinter-mcp-server.svg)](https://registry.npmjs.org/@downatthebottomofthemolehole/megalinter-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Node Version](https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen)](https://nodejs.org/)
+[![Node Version](https://img.shields.io/badge/node-%3E%3D24.14.0-brightgreen)](https://nodejs.org/)
 
 A Model Context Protocol (MCP) server for running [Ox Security MegaLinter](https://megalinter.io/) through `mega-linter-runner`. Works with any CI/CD platform (GitHub Actions, GitLab CI, Azure DevOps, CircleCI, Jenkins) or locally.
 
@@ -391,7 +391,7 @@ This workspace is preconfigured in `.vscode/mcp.json`:
 ```json
 {
   "servers": {
-    "megalinter-ox-security": {
+    "megalinter": {
       "type": "stdio",
       "command": "node",
       "args": ["./dist/index.js"]
