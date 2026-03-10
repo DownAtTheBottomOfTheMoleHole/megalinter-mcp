@@ -4,16 +4,19 @@
 
 > **Note:** This is a community-maintained MCP server. It is not an official Model Context Protocol server, but it is **sanctioned by Ox Security** as a complement to their official MegaLinter tools.
 
-[![Release Status](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/publish-mcp.yml/badge.svg?branch=main)](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/publish-mcp.yml)
+[![CI/Publish](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/publish-mcp.yml/badge.svg)](https://github.com/DownAtTheBottomOfTheMoleHole/megalinter-mcp/actions/workflows/publish-mcp.yml)
+[![Coverage](https://codecov.io/github/DownAtTheBottomOfTheMoleHole/megalinter-mcp/graph/badge.svg?branch=main)](https://codecov.io/github/DownAtTheBottomOfTheMoleHole/megalinter-mcp)
+[![npm](https://img.shields.io/npm/v/@downatthebottomofthemolehole/megalinter-mcp-server.svg)](https://registry.npmjs.org/@downatthebottomofthemolehole/megalinter-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Node Version](https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen)](https://nodejs.org/)
+[![Node Version](https://img.shields.io/badge/node-%3E%3D24.14.0-brightgreen)](https://nodejs.org/)
 
 A Model Context Protocol (MCP) server for running [Ox Security MegaLinter](https://megalinter.io/) through `mega-linter-runner`. Works with any CI/CD platform (GitHub Actions, GitLab CI, Azure DevOps, CircleCI, Jenkins) or locally.
 
 ## Overview
 
-This server provides nine MCP tools across execution, discovery, and analysis workflows:
+This server provides 15 MCP tools in total: 10 core tools and 5 convenience aliases across execution, discovery, and analysis workflows.
 
+- `megalinter_quick_action` for short, natural requests with sensible defaults.
 - `megalinter_run` to execute MegaLinter with configurable runtime and runner options.
 - `megalinter_write_config` to generate a minimal `.mega-linter.yml` file.
 - `megalinter_list_flavors` to return common MegaLinter flavors.
@@ -23,6 +26,23 @@ This server provides nine MCP tools across execution, discovery, and analysis wo
 - `megalinter_parse_reports` to parse JSON or SARIF report artefacts.
 - `megalinter_get_issue_summary` to aggregate report issues by linter and severity.
 - `megalinter_get_security_recommendations` to generate security-focused remediation guidance.
+
+### Quick Start (Short Prompts)
+
+If you prefer short prompts, use `megalinter_quick_action` first:
+
+- `@megalinter quick scan this repository`
+- `@megalinter security scan`
+- `@megalinter summarise errors`
+- `@megalinter list python security linters`
+- `@megalinter write config`
+
+Or use **ultra-short aliases** for minimal typing:
+
+- `@megalinter scan` — Quick scan with defaults
+- `@megalinter summary` — Summarise last run's errors
+- `@megalinter parse` — Parse JSON report
+- `@megalinter help_quick` — Context-aware help for your project
 
 ### Platform Compatibility
 
@@ -41,6 +61,12 @@ The only requirement is Docker (or a compatible container runtime like Colima).
 
 | Tool | Category | Typical outcome |
 | --- | --- | --- |
+| `megalinter_quick_action` | Interactive | Handle short natural requests with defaults |
+| `scan` | Alias | Ultra-short alias for quick scan |
+| `summary` | Alias | Ultra-short alias for error summary |
+| `parse` | Alias | Ultra-short alias for report parsing |
+| `help_quick` | Alias | Ultra-short alias for context-aware help |
+| `megalinter_help_quick` | Help | Context-aware suggestions for your project |
 | `megalinter_run` | Execution | Run linting and produce report artefacts |
 | `megalinter_write_config` | Configuration | Generate baseline `.mega-linter.yml` |
 | `megalinter_list_flavors` | Discovery | Identify an appropriate flavour for your stack |
@@ -53,7 +79,84 @@ The only requirement is Docker (or a compatible container runtime like Colima).
 
 ## Tools
 
+### `megalinter_quick_action`
+
+Interactive shortcut that accepts a short request and routes it to the right workflow.
+
+Inputs:
+
+- `request` (string, optional): Short instruction. Default: `quick scan`.
+- `action` (string, optional): Explicit quick action (`scan`, `config`, `flavors`, `linters`, `security`, `reporters`, `parse`, `summary`, `recommendations`).
+- `scanMode` (string, optional): Scan preset (`quick`, `full`, `security`, `fix`).
+- `target` (string, optional): Directory to scan. Default: `.`.
+- `workingDirectory` (string, optional): Command working directory.
+- `reportsPath` (string, optional): Reports directory. Default: `megalinter-reports`.
+- `reportType` (string, optional): Parse format (`json` or `sarif`).
+- `severity` (string, optional): Summary filter (`error`, `warning`, `info`).
+- `language` (string, optional): Language filter for linter queries. For scans, maps to a flavor hint (`python`, `javascript`, `terraform`, and similar).
+- `securityOnly` (boolean, optional): Return only security linters in linter queries. For scans, forces `security` flavor.
+- `autoFixOnly` (boolean, optional): Return only auto-fix linters in linter queries.
+- `timeoutMinutes` (number, optional): Timeout for scan actions. Default: `20`.
+- `summaryOnly` (boolean, optional): Return concise output for scans. Default: `true`.
+- `flavor` (string, optional): Optional flavor override for scan actions.
+- `fix` (boolean, optional): Force auto-fixes for scan actions.
+- `targetPath` (string, optional): Config output path for write-config requests.
+
+Examples:
+
+- `request: "quick scan"` -> Runs `ci_light` against changed files.
+- `request: "full scan"` -> Runs `all` flavor.
+- `request: "security scan"` -> Runs `security` flavor.
+- `request: "summarise errors"` -> Returns issue summary filtered to errors.
+- `request: "parse sarif report"` -> Parses SARIF output.
+- `action: "summary", severity: "error"` -> Deterministic summary with no phrase parsing.
+- `action: "scan", scanMode: "security"` -> Deterministic security scan.
+
+### `scan` (Ultra-short alias)
+
+Run a quick scan with minimal typing. Accepts optional parameters for customization.
+
+Inputs:
+
+- `language` (string, optional): Target language mapped to flavor (e.g., `python`, `javascript`, `terraform`).
+- `scanMode` (string, optional): Scan preset (`quick`, `full`, `security`, `fix`). Default: `quick`.
+- `summaryOnly` (boolean, optional): Return concise output. Default: `true`.
+
+Example: `@megalinter scan` runs a quick scan with concise output.
+
+### `summary` (Ultra-short alias)
+
+Summarise errors from the last MegaLinter run with minimal typing.
+
+Inputs:
+
+- `severity` (string, optional): Filter by severity (`error`, `warning`, `info`).
+- `linterFilter` (string, optional): Filter by linter name.
+
+Example: `@megalinter summary` shows all error/warning totals.
+
+### `parse` (Ultra-short alias)
+
+Parse MegaLinter report files with minimal typing.
+
+Inputs:
+
+- `reportType` (string, optional): Report format (`json` or `sarif`). Default: `json`.
+- `reportsPath` (string, optional): Reports directory path.
+
+Example: `@megalinter parse` parses the JSON report.
+
+### `megalinter_help_quick`
+
+Get context-aware help based on your current repository. Detects languages, frameworks, Docker, Terraform, and security files to suggest relevant commands.
+
+No inputs required.
+
+Example: `@megalinter help_quick` returns tailored suggestions for your project.
+
 ### `megalinter_run`
+
+Use this tool when you need full argument-level control. For short prompts, prefer `megalinter_quick_action`.
 
 Runs `mega-linter-runner` via `npx`.
 
@@ -76,6 +179,7 @@ Inputs:
 - `lintChangedFilesOnly` (boolean, optional): Sets `VALIDATE_ALL_CODEBASE=false` when true.
 - `runnerVersion` (string, optional): npm version for `mega-linter-runner` (for example `latest`).
 - `timeoutSeconds` (number, optional): Timeout in seconds. Default: `3600`.
+- `summaryOnly` (boolean, optional): Return concise logs. Default: `false`.
 - `extraArgs` (string[], optional): Additional CLI arguments.
 
 ### `megalinter_write_config`
@@ -149,17 +253,35 @@ Inputs:
 
 ## Prompt Cookbook
 
-Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
+Use these copy/paste prompts in Copilot Chat with `@megalinter`.
+CLI tools default to the current workspace root when no path is given.
+If you add a file or folder as Copilot context (`#file` or `#folder`), reference it in your prompt and the tool will target that path.
+
+### Quick Actions (`megalinter_quick_action`)
+
+```text
+@megalinter quick scan
+@megalinter full scan
+@megalinter security scan
+@megalinter summarise errors
+@megalinter parse sarif report
+@megalinter write config
+```
+
+**Expected output**: Routes each short request to the correct tool with sensible defaults.
+
+Deterministic alternatives using explicit action fields:
+
+```text
+@megalinter run quick action with action summary and severity error
+@megalinter run quick action with action parse and reportType sarif
+@megalinter run quick action with action scan and scanMode security
+```
 
 ### Run MegaLinter (`megalinter_run`)
 
 ```text
-@megalinter-ox-security run MegaLinter with:
-- workingDirectory: ${workspaceFolder}
-- path: .
-- flavor: all
-- reportsPath: megalinter-reports
-- timeoutSeconds: 1800
+@megalinter run megalinter with flavor all on . with reports in megalinter-reports
 ```
 
 **Expected output**: Executes linters and reports issues found across all languages. Creates `megalinter-reports/` with JSON, SARIF, and text reports.
@@ -167,10 +289,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 ### Create Config (`megalinter_write_config`)
 
 ```text
-@megalinter-ox-security create a MegaLinter config at .mega-linter.yml with:
-- applyFixes: none
-- showElapsedTime: true
-- flavorSuggestions: false
+@megalinter create a MegaLinter config at .mega-linter.yml
 ```
 
 **Expected output**: Creates `.mega-linter.yml` with specified settings ready for customization.
@@ -178,7 +297,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 ### List Flavors (`megalinter_list_flavors`)
 
 ```text
-@megalinter-ox-security list all available MegaLinter flavors
+@megalinter list all available MegaLinter flavors
 ```
 
 **Expected output**: Table of flavors (all, python, javascript, go, etc.) with descriptions and use cases.
@@ -186,7 +305,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 ### Query Linters (`megalinter_get_linters`)
 
 ```text
-@megalinter-ox-security list python security linters with autofix support
+@megalinter list python security linters with autofix support
 ```
 
 **Expected output**: Filtered list of Python-related and multi-language security linters from the current catalog that support autofix (if any match the query).
@@ -194,7 +313,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 ### Security Categories (`megalinter_get_security_info`)
 
 ```text
-@megalinter-ox-security show MegaLinter security linter categories
+@megalinter show MegaLinter security linter categories
 ```
 
 **Expected output**: Security categories (for example, `sast`, `secrets`, `supply-chain`, `container`, `infrastructure`) with associated linters (gitleaks, trivy, etc.).
@@ -202,7 +321,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 ### List Reporters (`megalinter_get_reporters`)
 
 ```text
-@megalinter-ox-security list available MegaLinter reporters
+@megalinter list available MegaLinter reporters
 ```
 
 **Expected output**: List of reporters (console, json, sarif, github-comment, etc.) with activation methods.
@@ -210,7 +329,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 ### Parse Reports (`megalinter_parse_reports`)
 
 ```text
-@megalinter-ox-security parse the json report from megalinter-reports
+@megalinter parse the json report from megalinter-reports
 ```
 
 **Expected output**: Parsed MegaLinter JSON or SARIF report content as structured data (raw report payload).
@@ -218,7 +337,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 ### Issue Summary (`megalinter_get_issue_summary`)
 
 ```text
-@megalinter-ox-security summarise issues from megalinter-reports with severity error
+@megalinter summarise issues from megalinter-reports with severity error
 ```
 
 **Expected output**: Summary of issues filtered by severity and linter inputs, aggregated by linter with totals and run counts.
@@ -226,7 +345,7 @@ Use these copy/paste prompts in Copilot Chat with `@megalinter-ox-security`.
 ### Security Recommendations (`megalinter_get_security_recommendations`)
 
 ```text
-@megalinter-ox-security generate security recommendations using megalinter-reports
+@megalinter generate security recommendations using megalinter-reports
 ```
 
 **Expected output**: Actionable security recommendations prioritized by severity with linter names, rule IDs, and suggested next steps.
@@ -272,7 +391,7 @@ This workspace is preconfigured in `.vscode/mcp.json`:
 ```json
 {
   "servers": {
-    "megalinter-ox-security": {
+    "megalinter": {
       "type": "stdio",
       "command": "node",
       "args": ["./dist/index.js"]
@@ -283,11 +402,11 @@ This workspace is preconfigured in `.vscode/mcp.json`:
 
 Reload VS Code (`Cmd+Shift+P` → `Developer: Reload Window`) after changing MCP configuration.
 
-Then query the server from Copilot Chat with `@megalinter-ox-security`, for example:
+Then query the server from Copilot Chat with `@megalinter`, for example:
 
 ```text
-@megalinter-ox-security list available flavors
-@megalinter-ox-security list security linters for javascript
+@megalinter list available flavors
+@megalinter list security linters for javascript
 ```
 
 ### Usage with Other MCP Clients
@@ -333,7 +452,7 @@ See [docs/TESTING.md](./docs/TESTING.md) for Copilot Chat scenarios, manual JSON
 Quick validation prompt in Copilot Chat:
 
 ```text
-@megalinter-ox-security list available flavors
+@megalinter list available flavors
 ```
 
 ## Interactive VS Code Workflows
@@ -343,25 +462,25 @@ Quick validation prompt in Copilot Chat:
 1. Ask Copilot to run a scan:
 
 ```text
-@megalinter-ox-security run megalinter on this repository with reports enabled
+@megalinter run megalinter on this repository with reports enabled
 ```
 
 1. Parse the generated report:
 
 ```text
-@megalinter-ox-security parse the json report in megalinter-reports
+@megalinter parse the json report in megalinter-reports
 ```
 
 1. Summarise and prioritise:
 
 ```text
-@megalinter-ox-security summarise error-level issues and top failing linters
+@megalinter summarise error-level issues and top failing linters
 ```
 
 1. Request security guidance:
 
 ```text
-@megalinter-ox-security generate security recommendations from the current report
+@megalinter generate security recommendations from the current report
 ```
 
 ### 2. Language-Specific Linter Onboarding
@@ -369,13 +488,13 @@ Quick validation prompt in Copilot Chat:
 1. Discover linters for your stack:
 
 ```text
-@megalinter-ox-security list python security linters with autofix support
+@megalinter list python security linters with autofix support
 ```
 
 1. Generate starter config:
 
 ```text
-@megalinter-ox-security create a megalinter config file with apply fixes set to none
+@megalinter create a megalinter config file with apply fixes set to none
 ```
 
 1. Disable unsuitable linters and iterate.
@@ -385,7 +504,7 @@ Quick validation prompt in Copilot Chat:
 1. List reporters:
 
 ```text
-@megalinter-ox-security list available reporters
+@megalinter list available reporters
 ```
 
 1. Select formats for your pipeline (for example SARIF for security tooling, Markdown for human-readable summaries).
@@ -412,13 +531,13 @@ Quick validation prompt in Copilot Chat:
 
 - [MegaLinter website](https://megalinter.io/) — Comprehensive documentation and configuration guide
 - [MegaLinter repository](https://github.com/oxsecurity/megalinter) — Source code and issue tracking
-- [mega-linter-runner](https://www.npmjs.com/package/mega-linter-runner) — npm package used by this server
+- [mega-linter-runner](https://registry.npmjs.org/mega-linter-runner) — npm package used by this server
 
 ### CI/CD Integrations
 
 - [MegaLinter Azure DevOps Extension](https://github.com/downatthebottomofthemolehole/megalinter-ado) — ADO task by the same author (also sanctioned by Ox Security)
 - GitHub Actions: Use MegaLinter's official [GitHub Action](https://github.com/marketplace/actions/megalinter)
-- GitLab CI/CD: See [MegaLinter GitLab integration docs](https://github.com/oxsecurity/megalinter/blob/main/docs/install-gitlab.md)
+- GitLab CI/CD: See [MegaLinter GitLab integration docs](https://raw.githubusercontent.com/oxsecurity/megalinter/main/docs/install-gitlab.md)
 - Jenkins, CircleCI, and others: Run MegaLinter via Docker in any CI/CD pipeline
 
 ### Model Context Protocol
@@ -427,15 +546,15 @@ Quick validation prompt in Copilot Chat:
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
 - [MCP servers registry](https://github.com/mcp)
 
-## Community & Contributing
+## Community and Contributing
 
-- 🤝 **[Contributing Guide](./CONTRIBUTING.md)** — Start here to contribute code, report bugs, or request features
-- 📜 **[Code of Conduct](./CODE_OF_CONDUCT.md)** — Expected community behaviour
-- 🔒 **[Security Policy](./SECURITY.md)** — Report vulnerabilities responsibly
-- 🧪 **[Testing Guide](./docs/TESTING.md)** — Manual testing and validation procedures
-- ⚙️ **[Maintainer Guide](./docs/MAINTAINERS.md)** — Release, CI/CD, and dependency update operations
+- [Contributing Guide](./CONTRIBUTING.md)
+- [Code of Conduct](./CODE_OF_CONDUCT.md)
+- [Security Policy](./SECURITY.md)
+- [Testing Guide](./docs/TESTING.md)
+- [Maintainer Guide](./docs/MAINTAINERS.md)
 
-## Attribution & License
+## Attribution and License
 
 Maintained by Carl Dawson under the [Down At The Bottom Of The Mole Hole](https://github.com/downatthebottomofthemolehole) organization.
 

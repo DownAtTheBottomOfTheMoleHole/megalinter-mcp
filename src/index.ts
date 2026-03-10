@@ -24,6 +24,7 @@ const DEFAULT_FLAVOR = "all";
 const DEFAULT_RELEASE = "v9";
 const DEFAULT_REPORTS_PATH = "megalinter-reports";
 const DEFAULT_TIMEOUT_SECONDS = 3600;
+const DEFAULT_QUICK_TIMEOUT_MINUTES = 20;
 
 const KNOWN_FLAVORS = [
   "all",
@@ -112,6 +113,30 @@ type ReportMetadata = {
     status?: string;
   }>;
 };
+
+type QuickIntent =
+  | "run"
+  | "write_config"
+  | "list_flavors"
+  | "list_linters"
+  | "security_info"
+  | "list_reporters"
+  | "parse_reports"
+  | "issue_summary"
+  | "security_recommendations";
+
+type QuickRunPreset = "quick" | "full" | "security" | "fix";
+
+type QuickAction =
+  | "scan"
+  | "config"
+  | "flavors"
+  | "linters"
+  | "security"
+  | "reporters"
+  | "parse"
+  | "summary"
+  | "recommendations";
 
 // Comprehensive linter metadata from MegaLinter documentation
 const LINTER_CATALOG: Record<string, LinterInfo> = {
@@ -365,6 +390,62 @@ const REPORTERS: ReporterInfo[] = [
   },
 ];
 
+const LINTER_LANGUAGE_HINTS = [
+  "ansible",
+  "cloudformation",
+  "dockerfile",
+  "go",
+  "infrastructure",
+  "java",
+  "javascript",
+  "kubernetes",
+  "php",
+  "python",
+  "repository",
+  "rust",
+  "terraform",
+  "typescript",
+];
+
+const SORTED_LINTER_LANGUAGE_HINTS = [...LINTER_LANGUAGE_HINTS].sort(
+  (left, right) => right.length - left.length,
+);
+
+const SCAN_LANGUAGE_TO_FLAVOR: Record<string, string> = {
+  c: "c_cpp",
+  cpp: "c_cpp",
+  "c++": "c_cpp",
+  csharp: "dotnet",
+  "c#": "dotnet",
+  dotnet: "dotnet",
+  dotnetweb: "dotnetweb",
+  go: "go",
+  java: "java",
+  javascript: "javascript",
+  js: "javascript",
+  node: "javascript",
+  nodejs: "javascript",
+  typescript: "javascript",
+  ts: "javascript",
+  php: "php",
+  python: "python",
+  py: "python",
+  ruby: "ruby",
+  rust: "rust",
+  terraform: "terraform",
+  tf: "terraform",
+  swift: "swift",
+  salesforce: "salesforce",
+};
+
+const SCAN_LANGUAGE_HINTS = Array.from(
+  new Set([...KNOWN_FLAVORS, ...Object.keys(SCAN_LANGUAGE_TO_FLAVOR)]),
+);
+
+const SORTED_SCAN_LANGUAGE_HINTS = [...SCAN_LANGUAGE_HINTS].sort(
+  (left, right) => right.length - left.length,
+);
+
 const server = new Server(
   {
     name: "megalinter-ox-mcp-server",
@@ -455,6 +536,304 @@ function buildRunnerEnv(args: ToolArgs): NodeJS.ProcessEnv {
   return env;
 }
 
+function summariseOutput(output: string, maxLines: number): string {
+  if (!output) {
+    return "(empty)";
+  }
+
+  const lines = output.split(/\r?\n/);
+  if (lines.length <= maxLines) {
+    return output;
+  }
+
+  const headCount = Math.max(1, Math.floor(maxLines * 0.7));
+  const tailCount = Math.max(1, maxLines - headCount);
+  const head = lines.slice(0, headCount).join("\n");
+  const tail = lines.slice(-tailCount).join("\n");
+
+  return `${head}\n\n... output truncated for summary mode ...\n\n${tail}`;
+}
+
+function normaliseText(value: string | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function includesAny(text: string, tokens: string[]): boolean {
+  return tokens.some((token) => text.includes(token));
+}
+
+function getQuickIntentFromAction(
+  action: QuickAction | undefined,
+): QuickIntent | undefined {
+  if (!action) {
+    return undefined;
+  }
+
+  if (action === "scan") {
+    return "run";
+  }
+
+  if (action === "config") {
+    return "write_config";
+  }
+
+  if (action === "flavors") {
+    return "list_flavors";
+  }
+
+  if (action === "linters") {
+    return "list_linters";
+  }
+
+  if (action === "security") {
+    return "security_info";
+  }
+
+  if (action === "reporters") {
+    return "list_reporters";
+  }
+
+  if (action === "parse") {
+    return "parse_reports";
+  }
+
+  if (action === "summary") {
+    return "issue_summary";
+  }
+
+  if (action === "recommendations") {
+    return "security_recommendations";
+  }
+
+  return undefined;
+}
+
+function getQuickRunPresetFromScanMode(
+  scanMode: QuickRunPreset | undefined,
+): QuickRunPreset | undefined {
+  return scanMode;
+}
+
+function getEnumString<T extends string>(
+  args: ToolArgs,
+  key: string,
+  allowed: readonly T[],
+): T | undefined {
+  const value = readString(args, key);
+  if (!value) {
+    return undefined;
+  }
+
+  const normalised = value.toLowerCase();
+  return (allowed as readonly string[]).includes(normalised)
+    ? (normalised as T)
+    : undefined;
+}
+
+function getQuickIntent(request: string): QuickIntent {
+  if (includesAny(request, ["flavor", "flavour"])) {
+    return "list_flavors";
+  }
+
+  if (includesAny(request, ["reporter"])) {
+    return "list_reporters";
+  }
+
+  if (
+    includesAny(request, [
+      "security info",
+      "security categories",
+      "security category",
+      "threat category",
+    ])
+  ) {
+    return "security_info";
+  }
+
+  if (includesAny(request, ["recommend", "remediation"])) {
+    return "security_recommendations";
+  }
+
+  if (
+    includesAny(request, ["summary", "summarise", "summarize", "triage"])
+  ) {
+    return "issue_summary";
+  }
+
+  if (
+    includesAny(request, ["parse", "sarif", "json report", "read report"])
+  ) {
+    return "parse_reports";
+  }
+
+  if (includesAny(request, ["linter", "linters"])) {
+    return "list_linters";
+  }
+
+  if (includesAny(request, ["config", ".mega-linter.yml", "configuration"])) {
+    return "write_config";
+  }
+
+  return "run";
+}
+
+function getQuickRunPreset(request: string): QuickRunPreset {
+  if (includesAny(request, ["security", "secure", "sast", "secrets"])) {
+    return "security";
+  }
+
+  if (includesAny(request, ["fix", "auto-fix", "autofix"])) {
+    return "fix";
+  }
+
+  if (includesAny(request, ["full", "all files", "complete"])) {
+    return "full";
+  }
+
+  return "quick";
+}
+
+function getLanguageFromText(
+  request: string,
+  languageHints: readonly string[],
+): string | undefined {
+  for (const language of languageHints) {
+    const escaped = language.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const tokenPattern = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`);
+    if (tokenPattern.test(request)) {
+      return language;
+    }
+  }
+
+  return undefined;
+}
+
+function mapScanLanguageToFlavor(language: string): string | undefined {
+  const normalised = language.trim().toLowerCase();
+  if (!normalised) {
+    return undefined;
+  }
+
+  if (KNOWN_FLAVORS.includes(normalised)) {
+    return normalised;
+  }
+
+  return SCAN_LANGUAGE_TO_FLAVOR[normalised];
+}
+
+function getSeverityFromText(
+  request: string,
+): "error" | "warning" | "info" | undefined {
+  if (request.includes("error")) {
+    return "error";
+  }
+
+  if (request.includes("warning")) {
+    return "warning";
+  }
+
+  if (request.includes("info")) {
+    return "info";
+  }
+
+  return undefined;
+}
+
+/**
+ * Detect languages and frameworks present in the current repository by inspecting common files.
+ */
+async function detectProjectContext(): Promise<{
+  languages: string[];
+  frameworks: string[];
+  hasDocker: boolean;
+  hasTerraform: boolean;
+  hasSecurity: boolean;
+}> {
+  const { readFile } = await import("node:fs/promises");
+  const { existsSync } = await import("node:fs");
+
+  const languages: string[] = [];
+  const frameworks: string[] = [];
+  let hasDocker = false;
+  let hasTerraform = false;
+  let hasSecurity = false;
+
+  // Detect languages via package managers and config files
+  if (existsSync("package.json")) {
+    languages.push("javascript");
+    try {
+      const pkg = JSON.parse(await readFile("package.json", "utf-8")) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const allDeps = {
+        ...pkg.dependencies,
+        ...pkg.devDependencies,
+      };
+      if (allDeps.typescript) {
+        languages.push("typescript");
+      }
+      if (allDeps.react) {
+        frameworks.push("React");
+      }
+      if (allDeps.vue) {
+        frameworks.push("Vue");
+      }
+      if (allDeps.angular) {
+        frameworks.push("Angular");
+      }
+    } catch {
+      /* ignore parse errors */
+    }
+  }
+
+  if (existsSync("requirements.txt") || existsSync("setup.py") || existsSync("pyproject.toml")) {
+    languages.push("python");
+  }
+
+  if (existsSync("Cargo.toml")) {
+    languages.push("rust");
+  }
+
+  if (existsSync("go.mod")) {
+    languages.push("go");
+  }
+
+  if (existsSync("Gemfile")) {
+    languages.push("ruby");
+  }
+
+  if (existsSync("composer.json")) {
+    languages.push("php");
+  }
+
+  if (existsSync("pom.xml") || existsSync("build.gradle")) {
+    languages.push("java");
+  }
+
+  // Detect infrastructure
+  if (existsSync("Dockerfile") || existsSync("docker-compose.yml")) {
+    hasDocker = true;
+  }
+
+  if (existsSync("main.tf") || existsSync("terraform.tf")) {
+    hasTerraform = true;
+  }
+
+  // Detect security concerns
+  if (existsSync(".env") || existsSync(".env.example")) {
+    hasSecurity = true;
+  }
+
+  return {
+    languages: [...new Set(languages)],
+    frameworks,
+    hasDocker,
+    hasTerraform,
+    hasSecurity,
+  };
+}
+
 async function runCommand(
   command: string,
   commandArgs: string[],
@@ -530,6 +909,10 @@ async function handleRunTool(args: ToolArgs) {
   );
 
   const reportsPath = env.MEGALINTER_REPORTS_PATH ?? DEFAULT_REPORTS_PATH;
+  const summaryOnly = readBool(args, "summaryOnly", false);
+
+  const stdout = summaryOnly ? summariseOutput(result.stdout, 60) : result.stdout;
+  const stderr = summaryOnly ? summariseOutput(result.stderr, 60) : result.stderr;
 
   const responseText = [
     `Command: ${command} ${commandArgs.join(" ")}`,
@@ -537,12 +920,15 @@ async function handleRunTool(args: ToolArgs) {
     `Reports path: ${reportsPath}`,
     `Exit code: ${result.exitCode}`,
     result.timedOut ? `Timed out after ${timeoutSeconds} seconds.` : "",
+    summaryOnly
+      ? "Output mode: summary (set summaryOnly=false for full logs)."
+      : "",
     "",
     "STDOUT:",
-    result.stdout || "(empty)",
+    stdout || "(empty)",
     "",
     "STDERR:",
-    result.stderr || "(empty)",
+    stderr || "(empty)",
   ]
     .filter((line) => line.length > 0)
     .join("\n");
@@ -551,6 +937,179 @@ async function handleRunTool(args: ToolArgs) {
     content: [{ type: "text", text: responseText }],
     isError: result.exitCode !== 0 || result.timedOut,
   };
+}
+
+export async function handleQuickActionTool(args: ToolArgs) {
+  const action = getEnumString<QuickAction>(args, "action", [
+    "scan",
+    "config",
+    "flavors",
+    "linters",
+    "security",
+    "reporters",
+    "parse",
+    "summary",
+    "recommendations",
+  ]);
+  const request = normaliseText(readString(args, "request") ?? "quick scan");
+  const intent = getQuickIntentFromAction(action) ?? getQuickIntent(request);
+
+  if (intent === "list_flavors") {
+    return {
+      content: [{ type: "text", text: KNOWN_FLAVORS.join(", ") }],
+    };
+  }
+
+  if (intent === "list_reporters") {
+    return handleGetReportersTool();
+  }
+
+  if (intent === "security_info") {
+    return handleGetSecurityInfoTool();
+  }
+
+  if (intent === "security_recommendations") {
+    return handleGetSecurityRecommendationsTool({
+      reportsPath: readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH,
+    });
+  }
+
+  if (intent === "issue_summary") {
+    const severity =
+      getEnumString<"error" | "warning" | "info">(args, "severity", [
+        "error",
+        "warning",
+        "info",
+      ]) ?? getSeverityFromText(request);
+    const linterFilter =
+      readString(args, "linterFilter") ?? readString(args, "linter");
+    return handleGetIssueSummaryTool({
+      reportsPath: readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH,
+      severityFilter: severity,
+      linterFilter,
+    });
+  }
+
+  if (intent === "parse_reports") {
+    const reportType =
+      getEnumString<"json" | "sarif">(args, "reportType", [
+        "json",
+        "sarif",
+      ]) ?? (request.includes("sarif") ? "sarif" : "json");
+    return handleParseReportsTool({
+      reportsPath: readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH,
+      reportType,
+    });
+  }
+
+  if (intent === "list_linters") {
+    const language =
+      readString(args, "language") ??
+      getLanguageFromText(request, SORTED_LINTER_LANGUAGE_HINTS);
+    const securityOnly = readBool(
+      args,
+      "securityOnly",
+      includesAny(request, ["security", "secure", "sast", "secret"]),
+    );
+    const autoFixOnly = readBool(
+      args,
+      "autoFixOnly",
+      includesAny(request, ["autofix", "auto-fix", "fix"]),
+    );
+    return handleGetLintersTool({ language, securityOnly, autoFixOnly });
+  }
+
+  if (intent === "write_config") {
+    const applyFixes = includesAny(request, ["autofix", "auto-fix", "fix"])
+      ? "all"
+      : "none";
+    return handleWriteConfigTool({
+      targetPath: readString(args, "targetPath") ?? ".mega-linter.yml",
+      applyFixes,
+      showElapsedTime: true,
+      flavorSuggestions: false,
+    });
+  }
+
+  const scanMode = getEnumString<QuickRunPreset>(args, "scanMode", [
+    "quick",
+    "full",
+    "security",
+    "fix",
+  ]);
+  const preset =
+    getQuickRunPresetFromScanMode(scanMode) ?? getQuickRunPreset(request);
+  const timeoutMinutes = Math.max(
+    1,
+    readNumber(
+      args,
+      "timeoutMinutes",
+      preset === "full" ? 60 : DEFAULT_QUICK_TIMEOUT_MINUTES,
+    ),
+  );
+
+  const runArgs: ToolArgs = {
+    workingDirectory: readString(args, "workingDirectory"),
+    path: readString(args, "target") ?? ".",
+    reportsPath: readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH,
+    timeoutSeconds: timeoutMinutes * 60,
+    summaryOnly: readBool(args, "summaryOnly", true),
+  };
+
+  if (preset === "quick") {
+    runArgs.flavor = "ci_light";
+    runArgs.lintChangedFilesOnly = true;
+  }
+
+  if (preset === "full") {
+    runArgs.flavor = "all";
+  }
+
+  if (preset === "security") {
+    runArgs.flavor = "security";
+  }
+
+  if (preset === "fix") {
+    runArgs.flavor = "ci_light";
+    runArgs.fix = true;
+    runArgs.lintChangedFilesOnly = true;
+  }
+
+  const scanLanguage =
+    readString(args, "language") ??
+    getLanguageFromText(request, SORTED_SCAN_LANGUAGE_HINTS);
+  if (scanLanguage) {
+    const languageFlavor = mapScanLanguageToFlavor(scanLanguage);
+    if (!languageFlavor) {
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              `Unsupported scan language: ${scanLanguage}. ` +
+              "Use a known flavor (for example: javascript, python, terraform) via flavor.",
+          },
+        ],
+        isError: true,
+      };
+    }
+    runArgs.flavor = languageFlavor;
+  }
+
+  if (readBool(args, "securityOnly")) {
+    runArgs.flavor = "security";
+  }
+
+  const explicitFlavor = readString(args, "flavor");
+  if (explicitFlavor) {
+    runArgs.flavor = explicitFlavor;
+  }
+
+  if (readBool(args, "fix")) {
+    runArgs.fix = true;
+  }
+
+  return handleRunTool(runArgs);
 }
 
 async function handleWriteConfigTool(args: ToolArgs) {
@@ -827,7 +1386,7 @@ export async function handleGetIssueSummaryTool(args: ToolArgs) {
       content: [
         {
           type: "text",
-          text: `Error analyzing issues: ${errorMessage}`,
+          text: `Error analysing issues: ${errorMessage}`,
         },
       ],
       isError: true,
@@ -941,13 +1500,236 @@ async function handleGetSecurityRecommendationsTool(args: ToolArgs) {
   }
 }
 
+/**
+ * Context-aware help tool that provides suggestions based on the current repository.
+ */
+export async function handleHelpQuickTool() {
+  try {
+    const context = await detectProjectContext();
+
+    let responseText = "# MegaLinter Quick Help\n\n";
+    responseText += "Based on your project, here are suggested commands:\n\n";
+
+    // Language-specific suggestions
+    if (context.languages.length > 0) {
+      responseText += `## Detected Languages: ${context.languages.join(", ")}\n\n`;
+      responseText += "**Shorthand examples:**\n";
+      for (const lang of context.languages.slice(0, 2)) {
+        responseText += `- \`list ${lang} linters\`\n`;
+        responseText += `- \`quick ${lang} scan\`\n`;
+      }
+      responseText += "\n**Explicit examples:**\n";
+      responseText += "```json\n";
+      responseText += `{ "action": "scan", "language": "${context.languages[0]}", "scanMode": "quick" }\n`;
+      responseText += "```\n\n";
+    }
+
+    // Security suggestions
+    if (context.hasSecurity) {
+      responseText += "## Security Recommendations\n\n";
+      responseText += "Your project has `.env` files. Consider:\n";
+      responseText += "- **Shorthand:** `security scan`\n";
+      responseText += "- **Explicit:** `{ \"action\": \"scan\", \"scanMode\": \"security\" }`\n\n";
+    }
+
+    // Infrastructure suggestions
+    if (context.hasDocker) {
+      responseText += "## Docker detected\n\n";
+      responseText += "Review Docker-focused linters:\n";
+      responseText += "- **Shorthand:** `list dockerfile linters`\n";
+      responseText += "- **Explicit:** `{ \"action\": \"linters\", \"language\": \"dockerfile\" }`\n\n";
+    }
+
+    if (context.hasTerraform) {
+      responseText += "## Terraform detected\n\n";
+      responseText += "Validate IaC:\n";
+      responseText += "- **Shorthand:** `terraform security scan`\n";
+      responseText += "- **Explicit:** `{ \"action\": \"scan\", \"language\": \"terraform\", \"scanMode\": \"security\" }`\n\n";
+    }
+
+    // Generic examples
+    responseText += "## Common Commands\n\n";
+    responseText += "### Ultra-short aliases\n";
+    responseText += "- `scan` — Run a quick scan\n";
+    responseText += "- `summary` — Summarise errors from last run\n";
+    responseText += "- `parse` — Parse JSON report\n";
+    responseText += "- `help_quick` — Show context-aware help\n\n";
+
+    responseText += "### Quick Actions (shorthand)\n";
+    responseText += "- `quick scan`\n";
+    responseText += "- `full scan`\n";
+    responseText += "- `security scan`\n";
+    responseText += "- `summarise errors`\n";
+    responseText += "- `list python linters`\n\n";
+
+    responseText += "### Quick Actions (explicit)\n";
+    responseText += "- `{ \"action\": \"scan\", \"scanMode\": \"quick\" }`\n";
+    responseText += "- `{ \"action\": \"summary\", \"severity\": \"error\" }`\n";
+    responseText += "- `{ \"action\": \"parse\", \"reportType\": \"sarif\" }`\n";
+
+    return {
+      content: [{ type: "text", text: responseText }],
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Error generating help: ${errorMessage}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Ultra-short alias: help_quick
+ */
+export async function handleHelpQuickAliasTool() {
+  return handleHelpQuickTool();
+}
+
+/**
+ * Ultra-short alias: scan
+ */
+export async function handleScanTool(args: ToolArgs) {
+  return handleQuickActionTool({ ...args, action: "scan" });
+}
+
+/**
+ * Ultra-short alias: summary
+ */
+export async function handleSummaryTool(args: ToolArgs) {
+  return handleQuickActionTool({ ...args, action: "summary" });
+}
+
+/**
+ * Ultra-short alias: parse
+ */
+export async function handleParseTool(args: ToolArgs) {
+  return handleQuickActionTool({ ...args, action: "parse" });
+}
+
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
+        name: "megalinter_quick_action",
+        description:
+          "Interactive shortcut tool for short requests (for example: quick scan, security scan, summarise errors, list python security linters).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            request: {
+              type: "string",
+              description:
+                "Short instruction. Examples: quick scan, full scan, security scan, summarise errors, parse sarif report, write config.",
+              default: "quick scan",
+            },
+            action: {
+              type: "string",
+              enum: [
+                "scan",
+                "config",
+                "flavors",
+                "linters",
+                "security",
+                "reporters",
+                "parse",
+                "summary",
+                "recommendations",
+              ],
+              description:
+                "Optional explicit action. Use this for deterministic quick workflows.",
+            },
+            scanMode: {
+              type: "string",
+              enum: ["quick", "full", "security", "fix"],
+              description:
+                "Scan preset when action is scan (or request implies a scan).",
+            },
+            target: {
+              type: "string",
+              description: "Directory to scan for run requests. Defaults to .",
+            },
+            workingDirectory: {
+              type: "string",
+              description:
+                "Directory where commands run. Defaults to current process directory.",
+            },
+            reportsPath: {
+              type: "string",
+              description:
+                "Report directory for parse, summary, and recommendation requests.",
+              default: DEFAULT_REPORTS_PATH,
+            },
+            reportType: {
+              type: "string",
+              enum: ["json", "sarif"],
+              description:
+                "Report format for parse requests. Defaults to json unless sarif is requested.",
+            },
+            severity: {
+              type: "string",
+              enum: ["error", "warning", "info"],
+              description: "Severity filter for summary requests.",
+            },
+            linterFilter: {
+              type: "string",
+              description: "Linter filter for summary requests.",
+            },
+            language: {
+              type: "string",
+              description:
+                "Language filter for linter-list requests. For scans, this maps to a flavor hint (e.g., python -> python, typescript -> javascript).",
+            },
+            securityOnly: {
+              type: "boolean",
+              description:
+                "Filter linter-list requests to security linters. For scans, forces security flavor.",
+              default: false,
+            },
+            autoFixOnly: {
+              type: "boolean",
+              description: "Filter linter-list requests to auto-fix linters.",
+              default: false,
+            },
+            timeoutMinutes: {
+              type: "number",
+              description: "Run timeout in minutes for scan requests.",
+              default: DEFAULT_QUICK_TIMEOUT_MINUTES,
+            },
+            summaryOnly: {
+              type: "boolean",
+              description:
+                "Use concise output for scan requests. Set false for full logs.",
+              default: true,
+            },
+            flavor: {
+              type: "string",
+              description:
+                "Optional flavour override for scan requests (e.g., javascript, python, security).",
+            },
+            fix: {
+              type: "boolean",
+              description: "Force auto-fix for scan requests.",
+              default: false,
+            },
+            targetPath: {
+              type: "string",
+              description:
+                "Output file path for write-config requests. Defaults to .mega-linter.yml.",
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
         name: "megalinter_run",
         description:
-          "Run Ox Security MegaLinter using mega-linter-runner. Works locally or in any CI/CD environment.",
+          "Run Ox Security MegaLinter using mega-linter-runner with full low-level control. For short prompts, use megalinter_quick_action.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1032,6 +1814,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: "number",
               description: "Command timeout in seconds.",
               default: DEFAULT_TIMEOUT_SECONDS,
+            },
+            summaryOnly: {
+              type: "boolean",
+              description: "Return concise logs instead of full stdout/stderr output.",
+              default: false,
             },
             extraArgs: {
               type: "array",
@@ -1195,12 +1982,108 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           additionalProperties: false,
         },
       },
+      {
+        name: "megalinter_help_quick",
+        description:
+          "Get context-aware help and examples based on your current repository. Suggests relevant commands for detected languages and frameworks.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "scan",
+        description:
+          "Ultra-short alias for quick scan. Same as megalinter_quick_action with action='scan'.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            language: {
+              type: "string",
+              description:
+                "Target language to map into a scan flavor (e.g., python, javascript, terraform).",
+            },
+            scanMode: {
+              type: "string",
+              enum: ["quick", "full", "security", "fix"],
+              description: "Scan preset mode.",
+              default: "quick",
+            },
+            summaryOnly: {
+              type: "boolean",
+              description: "Return concise output.",
+              default: true,
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "summary",
+        description:
+          "Ultra-short alias for error summary. Same as megalinter_quick_action with action='summary'.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            severity: {
+              type: "string",
+              enum: ["error", "warning", "info"],
+              description: "Filter by severity level.",
+            },
+            linterFilter: {
+              type: "string",
+              description: "Filter by linter name.",
+            },
+            reportsPath: {
+              type: "string",
+              description: "Reports directory path.",
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "help_quick",
+        description:
+          "Ultra-short alias for context-aware help. Same as megalinter_help_quick.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          additionalProperties: false,
+        },
+      },
+      {
+        name: "parse",
+        description:
+          "Ultra-short alias for report parsing. Same as megalinter_quick_action with action='parse'.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            reportType: {
+              type: "string",
+              enum: ["json", "sarif"],
+              description: "Type of report to parse.",
+              default: "json",
+            },
+            reportsPath: {
+              type: "string",
+              description: "Reports directory path.",
+            },
+          },
+          additionalProperties: false,
+        },
+      },
     ],
   };
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const args = (request.params.arguments ?? {}) as ToolArgs;
+
+  if (request.params.name === "megalinter_quick_action") {
+    return handleQuickActionTool(args);
+  }
 
   if (request.params.name === "megalinter_run") {
     return handleRunTool(args);
@@ -1243,6 +2126,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (request.params.name === "megalinter_get_security_recommendations") {
     return handleGetSecurityRecommendationsTool(args);
+  }
+
+  if (request.params.name === "megalinter_help_quick") {
+    return handleHelpQuickTool();
+  }
+
+  if (request.params.name === "scan") {
+    return handleScanTool(args);
+  }
+
+  if (request.params.name === "summary") {
+    return handleSummaryTool(args);
+  }
+
+  if (request.params.name === "help_quick") {
+    return handleHelpQuickAliasTool();
+  }
+
+  if (request.params.name === "parse") {
+    return handleParseTool(args);
   }
 
   return {

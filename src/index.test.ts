@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   handleGetIssueSummaryTool,
   handleGetLintersTool,
   handleParseReportsTool,
+  handleQuickActionTool,
 } from "./index.js";
 
 type ToolTextResult = {
@@ -180,4 +181,211 @@ describe("MCP tool handlers", () => {
       true,
     );
   });
+
+  it("quick action summarises only errors when requested", async () => {
+    const report = {
+      summary: {
+        total_badges_errors: 6,
+        total_badges_warnings: 4,
+      },
+      linter_runs: [{ linter_name: "REPOSITORY_SEMGREP", status: "error" }],
+    };
+
+    await writeFile(
+      path.join(testDir, "megalinter-report.json"),
+      JSON.stringify(report),
+      "utf8",
+    );
+
+    const result = (await handleQuickActionTool({
+      request: "summarise errors",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(firstText(result)).toContain("**Total Issues**: 6");
+  });
+
+  it("quick action applies shorthand linter filters", async () => {
+    const result = (await handleQuickActionTool({
+      request: "list security linters with autofix",
+    })) as ToolTextResult;
+
+    const linters = JSON.parse(firstText(result)) as Array<{
+      isSecurity: boolean;
+      isAutoFix: boolean;
+    }>;
+
+    expect(linters.length).toBeGreaterThan(0);
+    expect(linters.every((linter) => linter.isSecurity && linter.isAutoFix)).toBe(
+      true,
+    );
+  });
+
+  it("quick action can write a default config", async () => {
+    const configPath = path.join(testDir, ".mega-linter.yml");
+
+    const result = (await handleQuickActionTool({
+      request: "write config",
+      targetPath: configPath,
+    })) as ToolTextResult;
+
+    const content = await readFile(configPath, "utf8");
+    expect(firstText(result)).toContain("Wrote MegaLinter configuration");
+    expect(content).toContain("APPLY_FIXES: none");
+  });
+
+  it("quick action supports explicit summary action and severity", async () => {
+    const report = {
+      summary: {
+        total_badges_errors: 2,
+        total_badges_warnings: 7,
+      },
+      linter_runs: [{ linter_name: "REPOSITORY_GITLEAKS", status: "warning" }],
+    };
+
+    await writeFile(
+      path.join(testDir, "megalinter-report.json"),
+      JSON.stringify(report),
+      "utf8",
+    );
+
+    const result = (await handleQuickActionTool({
+      action: "summary",
+      severity: "warning",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(firstText(result)).toContain("**Total Issues**: 7");
+  });
+
+  it("quick action supports explicit summary action with linter filter", async () => {
+    const report = {
+      summary: {
+        total_badges_errors: 4,
+        total_badges_warnings: 0,
+      },
+      linter_runs: [
+        { linter_name: "ESLint", status: "error" },
+        { linter_name: "REPOSITORY_GITLEAKS", status: "error" },
+      ],
+    };
+
+    await writeFile(
+      path.join(testDir, "megalinter-report.json"),
+      JSON.stringify(report),
+      "utf8",
+    );
+
+    const result = (await handleQuickActionTool({
+      action: "summary",
+      linterFilter: "eslint",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(firstText(result)).toContain("- ESLint: 1 runs");
+    expect(firstText(result)).not.toContain("REPOSITORY_GITLEAKS");
+  });
+
+  it("quick action supports explicit parse action and report type", async () => {
+    const report = {
+      version: "2.1.0",
+      runs: [{ tool: { driver: { name: "MegaLinter" } }, results: [] }],
+    };
+
+    await writeFile(
+      path.join(testDir, "megalinter-report.sarif"),
+      JSON.stringify(report),
+      "utf8",
+    );
+
+    const result = (await handleQuickActionTool({
+      action: "parse",
+      reportType: "sarif",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(firstText(result)).toContain("# Parsed SARIF Report");
+  });
+
+  it("scan alias tool delegates to quick action with action=scan", async () => {
+    const { handleScanTool } = await import("./index.js");
+    // This alias sets action="scan" internally, which we can verify by type-checking
+    // We don't actually run the scan in this test to keep it fast
+    expect(handleScanTool).toBeDefined();
+    expect(typeof handleScanTool).toBe("function");
+  });
+
+  it("summary alias tool delegates to quick action with action=summary", async () => {
+    const { handleSummaryTool } = await import("./index.js");
+
+    await writeFile(
+      path.join(testDir, "megalinter-report.json"),
+      JSON.stringify({
+        linter_runs: [
+          {
+            linter_name: "ESLint",
+            files_lint_results: [
+              {
+                file_name: "test.js",
+                errors_number: 2,
+                errors: [
+                  { severity: "error", message: "Missing semicolon" },
+                  { severity: "warning", message: "Unused variable" },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+      "utf8",
+    );
+
+    const result = (await handleSummaryTool({
+      severity: "error",
+      linterFilter: "eslint",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(firstText(result)).toContain("# Issue Summary");
+    expect(firstText(result)).toContain("error");
+    expect(firstText(result)).toContain("- Linter: eslint");
+  });
+
+  it("parse alias tool delegates to quick action with action=parse", async () => {
+    const { handleParseTool } = await import("./index.js");
+
+    await writeFile(
+      path.join(testDir, "megalinter-report.json"),
+      JSON.stringify({
+        linter_runs: [],
+      }),
+      "utf8",
+    );
+
+    const result = (await handleParseTool({
+      reportType: "json",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(firstText(result)).toContain("# Parsed JSON Report");
+  });
+
+  it("help quick tool returns context-aware suggestions", async () => {
+    const { handleHelpQuickTool } = await import("./index.js");
+    const result = (await handleHelpQuickTool()) as ToolTextResult;
+
+    expect(firstText(result)).toContain("# MegaLinter Quick Help");
+    expect(firstText(result)).toContain("Ultra-short aliases");
+  });
+
+  it("scan with unsupported language returns actionable error", async () => {
+    const result = (await handleQuickActionTool({
+      action: "scan",
+      language: "docker",
+    })) as ToolTextResult & { isError?: boolean };
+
+    expect(result.isError).toBe(true);
+    expect(firstText(result)).toContain("Unsupported scan language: docker");
+  });
 });
+

@@ -1,17 +1,40 @@
 {
   "ignorePatterns": [
     {
-      "pattern": "^https://github.com/.+/settings"
+      "pattern": "^https:\\/\\/registry\\.modelcontextprotocol\\.io"
+    },
+    {
+      "pattern": "^https:\\/\\/gitversion\\.net"
+    },
+    {
+      "pattern": "^https:\\/\\/github\\.com\\\/.+\\\/settings"
+    },
+    {
+      "pattern": "^https:\\/\\/github\\.com\\\/modelcontextprotocol\\\/registry\\\/releases"
+    },
+    {
+      "pattern": "^https:\\/\\/www\\.npmjs\\.com\\\/package"
+    },
+    {
+      "pattern": "^https:\\/\\/github\\.com\\\/oxsecurity\\\/megalinter\\\/blob\\\/main\\\/docs\\\/install"
     }
   ],
   "timeout": "20s",
   "retryOn429": true,
   "retryCount": 3,
-  "fallbackRetryDelay": "30s",
-  "aliveStatusCodes": [200, 206, 301, 302, 307, 308, 403],
+  "aliveStatusCodes": [
+    200,
+    206,
+    301,
+    302,
+    307,
+    308
+  ],
   "httpHeaders": [
     {
-      "urls": ["https://github.com"],
+      "urls": [
+        "https://github.com"
+      ],
       "headers": {
         "Accept": "text/html"
       }

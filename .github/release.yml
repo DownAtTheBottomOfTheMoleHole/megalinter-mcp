@@ -3,43 +3,21 @@ changelog:
     - title: ":boom: Breaking Changes"
       labels:
         - breaking-change
-        - breaking
-    - title: ":sparkles: Features and Enhancements"
+    - title: ":sparkles: Features"
       labels:
         - feature
-        - enhancement
-        - feat
     - title: ":bug: Bug Fixes"
       labels:
         - bug
-        - bugfix
-        - fix
-    - title: ":technologist: Developer Experience"
-      labels:
-        - ci
-        - github-actions
-        - workflow
-        - tooling
-        - test
-        - developer-experience
+        - hotfix
     - title: ":memo: Documentation"
       labels:
         - documentation
-        - docs
-        - readme
-    - title: ":arrow_up: Dependencies"
-      labels:
-        - dependencies
-        - deps
-        - renovate
     - title: ":wrench: Maintenance"
       labels:
         - maintenance
-        - chore
-
-exclude:
-  labels:
-    - duplicate
-    - invalid
-    - wontfix
-    - skip-changelog
+  exclude:
+    labels:
+      - duplicate
+      - invalid
+      - wontfix

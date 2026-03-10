@@ -1,0 +1,21 @@
+# Lychee configuration used by MegaLinter SPELL_LYCHEE.
+# Keep checks strict while excluding known false positives and generated URL patterns.
+
+max_redirects = 5
+max_retries = 3
+retry_wait_time = 2
+timeout = 20
+
+accept = [200, 206, 301, 302, 307, 308]
+
+exclude = [
+  '^https://www\\.npmjs\\.com/package(?:/.*)?$',
+  '^https://github\\.com/.+/settings$',
+  '^https://github\\.com/modelcontextprotocol/registry/releases.*$',
+  '^https://github\\.com/oxsecurity/megalinter/blob/main/docs/install(?:-gitlab)?\\.md$',
+  '^https://gitversion\\.net/docs/reference/yaml$',
+]
+
+exclude_path = [
+  '^\\.markdown-link-check\\.json$',
+]
