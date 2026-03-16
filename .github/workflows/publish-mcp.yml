@@ -94,11 +94,11 @@ jobs:
         with:
           node-version: 24.x
 
-      - uses: gittools/actions/gitversion/setup@71a79f7569b981036febd9ce5870f87e069928e7 # v4.3.3
+      - uses: gittools/actions/gitversion/setup@63daa16d3d7f45b16ad39d810aa8addf95785067 # v4.4.1
         with:
           versionSpec: "6.6.x"
 
-      - uses: gittools/actions/gitversion/execute@71a79f7569b981036febd9ce5870f87e069928e7 # v4.3.3
+      - uses: gittools/actions/gitversion/execute@63daa16d3d7f45b16ad39d810aa8addf95785067 # v4.4.1
         id: gitversion
         with:
           configFilePath: GitVersion.yml
@@ -397,7 +397,7 @@ jobs:
             fs.writeFileSync('release-notes.md', body, 'utf8');
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        uses: softprops/action-gh-release@1853d73993c8ca1b2c9c1a7fede39682d0ab5c2a # v2.5.3
         with:
           tag_name: v${{ steps.release_version.outputs.value }}
           name: v${{ steps.release_version.outputs.value }}
