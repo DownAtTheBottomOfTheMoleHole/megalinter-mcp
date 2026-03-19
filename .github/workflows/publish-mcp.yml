@@ -68,7 +68,7 @@ jobs:
       - name: Upload MegaLinter SARIF
         if: success() || failure()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
+        uses: github/codeql-action/upload-sarif@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4
         with:
           sarif_file: ${{ steps.sarif.outputs.sarif_dir }}
 
@@ -94,11 +94,11 @@ jobs:
         with:
           node-version: 24.x
 
-      - uses: gittools/actions/gitversion/setup@63daa16d3d7f45b16ad39d810aa8addf95785067 # v4.4.1
+      - uses: gittools/actions/gitversion/setup@e0d584e657c606912e8fd522aeed29025975705f # v4.4.2
         with:
           versionSpec: "6.6.x"
 
-      - uses: gittools/actions/gitversion/execute@63daa16d3d7f45b16ad39d810aa8addf95785067 # v4.4.1
+      - uses: gittools/actions/gitversion/execute@e0d584e657c606912e8fd522aeed29025975705f # v4.4.2
         id: gitversion
         with:
           configFilePath: GitVersion.yml
