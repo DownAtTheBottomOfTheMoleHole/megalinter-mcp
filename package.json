@@ -45,7 +45,7 @@
     "docs:links": "npx --yes markdown-link-check -c .markdown-link-check.json README.md docs/*.md"
   },
   "engines": {
-    "node": ">=24.14.0"
+    "node": ">=24.14.1"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.27.1"
