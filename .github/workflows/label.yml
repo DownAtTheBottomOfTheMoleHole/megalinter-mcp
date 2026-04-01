@@ -28,18 +28,7 @@ jobs:
           script: |
             const labels = ['Renovate', 'maintenance'];
 
-            // Parse PR title to determine semantic version label
-            const title = context.payload.pull_request.title;
-            if (title.includes('major') || title.includes('major version')) {
-              labels.push('Semver Major');
-            } else if (title.includes('minor') || title.includes('minor version')) {
-              labels.push('Semver Minor');
-            } else {
-              // Default to patch for dependency updates
-              labels.push('Semver Patch');
-            }
-
-            github.rest.issues.addLabels({
+            await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
