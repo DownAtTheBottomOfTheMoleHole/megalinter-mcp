@@ -16,33 +16,31 @@
   "internalChecksFilter": "flexible",
   "packageRules": [
     {
-      "description": "Label updates by type",
+      "description": "Label dependency updates without driving release semver labels",
       "matchUpdateTypes": [
         "major"
       ],
       "automerge": false,
       "labels": [
-        "breaking-change"
+        "maintenance"
       ],
       "assignees": [
         "@downatthebottomofthemolehole"
       ],
       "semanticCommitType": "chore",
-      "additionalBranchPrefix": "{{semanticCommitType}}-",
-      "commitMessageSuffix": " +semver: major"
+      "additionalBranchPrefix": "{{semanticCommitType}}-"
     },
     {
       "matchUpdateTypes": [
         "minor"
       ],
       "labels": [
-        "feature"
+        "maintenance"
       ],
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "squash",
-      "semanticCommitType": "chore",
-      "commitMessageSuffix": " +semver: minor"
+      "semanticCommitType": "chore"
     },
     {
       "matchUpdateTypes": [
@@ -55,8 +53,7 @@
       "automerge": true,
       "automergeType": "pr",
       "automergeStrategy": "squash",
-      "semanticCommitType": "chore",
-      "commitMessageSuffix": " +semver: patch"
+      "semanticCommitType": "chore"
     },
     {
       "groupName": "Node.js & Core Dependencies",
