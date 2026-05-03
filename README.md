@@ -1,5 +1,7 @@
 # MegaLinter MCP Server
 
+![Down At The Bottom Of The Mole Hole banner](.assets/org-banner.png)
+
 <!-- mcp-name: io.github.downatthebottomofthemolehole/megalinter-mcp-server -->
 
 > **Note:** This is a community-maintained MCP server. It is not an official Model Context Protocol server, but it is **sanctioned by Ox Security** as a complement to their official MegaLinter tools.
