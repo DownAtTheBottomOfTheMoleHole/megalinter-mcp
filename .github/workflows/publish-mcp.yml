@@ -68,7 +68,7 @@ jobs:
       - name: Upload MegaLinter SARIF
         if: success() || failure()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
         with:
           sarif_file: ${{ steps.sarif.outputs.sarif_dir }}
 
@@ -397,7 +397,7 @@ jobs:
             fs.writeFileSync('release-notes.md', body, 'utf8');
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: v${{ steps.release_version.outputs.value }}
           name: v${{ steps.release_version.outputs.value }}
