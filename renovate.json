@@ -108,6 +108,7 @@
     "rangeStrategy": "bump"
   },
   "vulnerabilityAlerts": {
+    "prConcurrentLimit": 1,
     "assignees": [
       "@downatthebottomofthemolehole"
     ],
@@ -118,6 +119,7 @@
   },
   "prCreation": "immediate",
   "prConcurrentLimit": 3,
+  "prHourlyLimit": 1,
   "semanticCommits": "enabled",
   "semanticCommitScope": "deps"
 }
