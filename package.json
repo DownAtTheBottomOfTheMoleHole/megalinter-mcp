@@ -51,14 +51,14 @@
     "@modelcontextprotocol/sdk": "1.31.0"
   },
   "devDependencies": {
-    "@types/node": "25.9.5",
-    "@typescript-eslint/eslint-plugin": "8.68.0",
-    "@typescript-eslint/parser": "8.68.0",
-    "@vitest/coverage-v8": "^4.1.11",
-    "eslint": "10.9.1",
-    "tsx": "4.23.13",
+    "@types/node": "25.9.9",
+    "@typescript-eslint/eslint-plugin": "8.72.1",
+    "@typescript-eslint/parser": "8.72.1",
+    "@vitest/coverage-v8": "^4.1.12",
+    "eslint": "10.14.0",
+    "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vitest": "4.1.11"
+    "vitest": "4.1.12"
   },
   "license": "MIT"
 }
