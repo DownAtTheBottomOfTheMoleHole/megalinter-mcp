@@ -72,6 +72,30 @@ jobs:
         with:
           sarif_file: ${{ steps.sarif.outputs.sarif_dir }}
 
+  pr-test-and-build:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    name: PR Test, Build & Compliance
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Verify build artifacts
+        run: |
+          test -f dist/index.js
+          test -f dist/index.d.ts
+
   version-and-tag:
     if: github.event.pull_request.merged == true && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
