@@ -18,4 +18,5 @@ exclude = [
 
 exclude_path = [
   '^\\.markdown-link-check\\.json$',
+  '^package-lock\\.json$',
 ]
