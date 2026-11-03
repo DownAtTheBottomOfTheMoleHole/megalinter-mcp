@@ -140,7 +140,7 @@ jobs:
           LAST_VERSION="${LAST_VERSION:-0.0.0}"
           RANGE="HEAD"
           [[ -n "$LAST_TAG" ]] && RANGE="$LAST_TAG..HEAD"
-          MESSAGES="$(git log --format='%s%n%b' "$RANGE")"
+          MESSAGES="$(git log --format='%s' "$RANGE")"
 
           IFS=. read -r MAJOR MINOR PATCH <<< "$LAST_VERSION"
           if grep -qiE '\+semver:\s?(breaking|major)' <<< "$MESSAGES"; then
