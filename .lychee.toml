@@ -10,6 +10,7 @@ accept = [200, 206, 301, 302, 307, 308]
 
 exclude = [
   '^https://www\\.npmjs\\.com/package(?:/.*)?$',
+  '^https://www\\.npmjs\\.com/?$',
   '^https://github\\.com/.+/settings$',
   '^https://github\\.com/modelcontextprotocol/registry/releases.*$',
   '^https://github\\.com/oxsecurity/megalinter/blob/main/docs/install(?:-gitlab)?\\.md$',
