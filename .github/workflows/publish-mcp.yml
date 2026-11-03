@@ -101,7 +101,7 @@ jobs:
           test -f dist/index.d.ts
 
   version-and-tag:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -129,10 +129,10 @@ jobs:
           CURRENT_VERSION="$(node -p "require('./package.json').version")"
           echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
 
-          if [[ -n "$LAST_TAG" ]] && [[ "$(git rev-list -n 1 "$LAST_TAG")" == "$(git rev-parse HEAD)" ]]; then
+          if [[ -n "$LAST_TAG" ]] && git merge-base --is-ancestor HEAD "$LAST_TAG"; then
             echo "computed_version=${LAST_TAG#v}" >> "$GITHUB_OUTPUT"
             echo "should_release=false" >> "$GITHUB_OUTPUT"
-            echo "reason=head-already-tagged" >> "$GITHUB_OUTPUT"
+            echo "reason=head-already-released" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
