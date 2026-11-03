@@ -2,9 +2,13 @@ name: Release
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened]
     branches:
       - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
   schedule:
     - cron: "0 0 * * 1"
 
@@ -97,7 +101,7 @@ jobs:
           test -f dist/index.d.ts
 
   version-and-tag:
-    if: github.event.pull_request.merged == true && github.actor != 'github-actions[bot]'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -118,70 +122,53 @@ jobs:
         with:
           node-version: 24.x
 
-      - uses: gittools/actions/gitversion/setup@7417b1089e2c7de93510f1901d656ddf60bb024f # v4.7.0
-        with:
-          versionSpec: "6.6.x"
-
-      - uses: gittools/actions/gitversion/execute@7417b1089e2c7de93510f1901d656ddf60bb024f # v4.7.0
-        id: gitversion
-        with:
-          configFilePath: GitVersion.yml
-
       - name: Decide whether to release
         id: release_check
         run: |
-          VERSION="${{ steps.gitversion.outputs.majorMinorPatch }}"
+          LAST_TAG="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)"
           CURRENT_VERSION="$(node -p "require('./package.json').version")"
-
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Computed version '$VERSION' is not strict SemVer (x.y.z)."
-            exit 1
-          fi
-
-          echo "computed_version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
 
-          if [[ "$VERSION" == "$CURRENT_VERSION" ]]; then
+          if [[ -n "$LAST_TAG" ]] && git merge-base --is-ancestor HEAD "$LAST_TAG"; then
+            echo "computed_version=${LAST_TAG#v}" >> "$GITHUB_OUTPUT"
             echo "should_release=false" >> "$GITHUB_OUTPUT"
-            echo "reason=version-unchanged" >> "$GITHUB_OUTPUT"
+            echo "reason=head-already-released" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
+          LAST_VERSION="${LAST_TAG#v}"
+          LAST_VERSION="${LAST_VERSION:-0.0.0}"
+          RANGE="HEAD"
+          [[ -n "$LAST_TAG" ]] && RANGE="$LAST_TAG..HEAD"
+          MESSAGES="$(git log --format='%s%n%b' "$RANGE")"
+
+          IFS=. read -r MAJOR MINOR PATCH <<< "$LAST_VERSION"
+          if grep -qiE '\+semver:\s?(breaking|major)' <<< "$MESSAGES"; then
+            MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
+          elif grep -qiE '\+semver:\s?(feature|minor)' <<< "$MESSAGES"; then
+            MINOR=$((MINOR + 1)); PATCH=0
+          else
+            PATCH=$((PATCH + 1))
+          fi
+          VERSION="$MAJOR.$MINOR.$PATCH"
+
           if git ls-remote --tags origin "refs/tags/v$VERSION" | grep -q "refs/tags/v$VERSION$"; then
+            echo "computed_version=$VERSION" >> "$GITHUB_OUTPUT"
             echo "should_release=false" >> "$GITHUB_OUTPUT"
             echo "reason=tag-exists" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
+          echo "computed_version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "should_release=true" >> "$GITHUB_OUTPUT"
           echo "reason=release-required" >> "$GITHUB_OUTPUT"
 
-      - name: Update version files
-        if: steps.release_check.outputs.should_release == 'true'
-        env:
-          VERSION: ${{ steps.release_check.outputs.computed_version }}
-        run: |
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
-          node -e "const fs = require('fs'); const p = 'server.json'; const data = JSON.parse(fs.readFileSync(p, 'utf8')); data.version = process.env.VERSION; if (Array.isArray(data.packages)) { data.packages = data.packages.map((pkg) => ({ ...pkg, version: process.env.VERSION })); } fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\n');"
-          node -e "const fs = require('fs'); const p = 'mcp.json'; const data = JSON.parse(fs.readFileSync(p, 'utf8')); data.version = process.env.VERSION; fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\n');"
-
-      - name: Commit version bump
-        if: steps.release_check.outputs.should_release == 'true'
-        env:
-          VERSION: ${{ steps.release_check.outputs.computed_version }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json server.json mcp.json
-          git commit -m "chore(release): v$VERSION"
-
-      - name: Push release commit and tag
+      - name: Tag release
         if: steps.release_check.outputs.should_release == 'true'
         env:
           VERSION: ${{ steps.release_check.outputs.computed_version }}
         run: |
           git tag "v$VERSION"
-          git push origin HEAD:main
           git push origin "v$VERSION"
 
       - name: Release skipped summary

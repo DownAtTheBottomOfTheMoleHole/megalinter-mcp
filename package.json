@@ -38,7 +38,7 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "check": "tsc --noEmit -p tsconfig.json",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
@@ -51,13 +51,14 @@
     "@modelcontextprotocol/sdk": "1.32.0"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@types/node": "25.9.9",
     "@typescript-eslint/eslint-plugin": "8.72.1",
     "@typescript-eslint/parser": "8.72.1",
     "@vitest/coverage-v8": "^4.1.12",
     "eslint": "10.14.0",
     "tsx": "4.23.15",
-    "typescript": "7.0.2",
+    "typescript": "6.0.3",
     "vitest": "4.1.12"
   },
   "license": "MIT"
