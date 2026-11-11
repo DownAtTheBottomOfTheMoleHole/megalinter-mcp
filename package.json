@@ -48,7 +48,7 @@
     "node": ">=26.13.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.32.0"
+    "@modelcontextprotocol/sdk": "1.32.2"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
