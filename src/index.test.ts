@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   handleGetIssueSummaryTool,
@@ -25,7 +24,9 @@ describe("MCP tool handlers", () => {
   let testDir = "";
 
   beforeEach(async () => {
-    testDir = await mkdtemp(path.join(tmpdir(), "megalinter-mcp-test-"));
+    testDir = await mkdtemp(
+      path.join(process.cwd(), ".tmp-megalinter-mcp-test-"),
+    );
   });
 
   afterEach(async () => {
@@ -234,6 +235,30 @@ describe("MCP tool handlers", () => {
     expect(content).toContain("APPLY_FIXES: none");
   });
 
+  it("rejects config output paths outside the workspace", async () => {
+    const outsidePath = path.resolve(process.cwd(), "..", "outside-config.yml");
+    await expect(
+      handleQuickActionTool({
+        request: "write config",
+        targetPath: outsidePath,
+      }),
+    ).rejects.toThrow(/targetPath must stay within workspace/);
+  });
+
+  it("rejects writing config to symlink targets", async () => {
+    const targetFile = path.join(testDir, "actual.yml");
+    const symlinkPath = path.join(testDir, "link.yml");
+    await writeFile(targetFile, "safe", "utf8");
+    await symlink(targetFile, symlinkPath);
+
+    await expect(
+      handleQuickActionTool({
+        request: "write config",
+        targetPath: symlinkPath,
+      }),
+    ).rejects.toThrow(/must not point to a symbolic link/);
+  });
+
   it("quick action supports explicit summary action and severity", async () => {
     const report = {
       summary: {
@@ -370,6 +395,36 @@ describe("MCP tool handlers", () => {
     expect(firstText(result)).toContain("# Parsed JSON Report");
   });
 
+  it("parse reports rejects symlinked report files", async () => {
+    const targetReport = path.join(testDir, "sensitive.json");
+    await writeFile(targetReport, JSON.stringify({ secret: true }), "utf8");
+    await symlink(targetReport, path.join(testDir, "megalinter-report.json"));
+
+    const result = (await handleParseReportsTool({
+      reportType: "json",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(result.isError).toBe(true);
+    expect(firstText(result)).toContain("Refusing to read report symlink");
+  });
+
+  it("parse reports rejects oversized report files", async () => {
+    await writeFile(
+      path.join(testDir, "megalinter-report.json"),
+      "x".repeat(11 * 1024 * 1024),
+      "utf8",
+    );
+
+    const result = (await handleParseReportsTool({
+      reportType: "json",
+      reportsPath: testDir,
+    })) as ToolTextResult;
+
+    expect(result.isError).toBe(true);
+    expect(firstText(result)).toContain("Report file is too large");
+  });
+
   it("help quick tool returns context-aware suggestions", async () => {
     const { handleHelpQuickTool } = await import("./index.js");
     const result = (await handleHelpQuickTool()) as ToolTextResult;
@@ -388,4 +443,3 @@ describe("MCP tool handlers", () => {
     expect(firstText(result)).toContain("Unsupported scan language: docker");
   });
 });
-

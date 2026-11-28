@@ -94,7 +94,17 @@ export function formatOutput(output: string, maxChars = 120_000): string {
 }
 
 export function resolveRunnerPackage(runnerVersion: string): string {
-  return runnerVersion === "latest"
+  const normalizedVersion = runnerVersion.trim();
+  if (
+    normalizedVersion !== "latest" &&
+    !/^[A-Za-z0-9._-]+$/.test(normalizedVersion)
+  ) {
+    throw new Error(
+      `Invalid runnerVersion "${runnerVersion}". Use "latest" or an npm-safe version/tag.`,
+    );
+  }
+
+  return normalizedVersion === "latest"
     ? "mega-linter-runner"
-    : `mega-linter-runner@${runnerVersion}`;
+    : `mega-linter-runner@${normalizedVersion}`;
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
@@ -25,6 +25,10 @@ const DEFAULT_RELEASE = "v9";
 const DEFAULT_REPORTS_PATH = "megalinter-reports";
 const DEFAULT_TIMEOUT_SECONDS = 3600;
 const DEFAULT_QUICK_TIMEOUT_MINUTES = 20;
+const MAX_STREAM_CAPTURE_CHARS = 2_000_000;
+const MAX_REPORT_FILE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_APPLY_FIXES_PATTERN = /^[A-Za-z0-9_,.-]+$/;
+const ALLOWED_LINTER_ID_PATTERN = /^[A-Za-z0-9_]+$/;
 
 const KNOWN_FLAVORS = [
   "all",
@@ -458,19 +462,20 @@ const server = new Server(
   },
 );
 
-function buildRunnerArgs(args: ToolArgs): string[] {
+function buildRunnerArgs(args: ToolArgs, defaultScanPath: string): string[] {
   const cliArgs: string[] = [];
 
   const pathArg = readString(args, "path");
+  const resolvedPath = pathArg
+    ? path.resolve(defaultScanPath, pathArg)
+    : defaultScanPath;
   const flavor = readString(args, "flavor") ?? DEFAULT_FLAVOR;
   const image = readString(args, "image");
   const env = readString(args, "env");
   const release = readString(args, "release") ?? DEFAULT_RELEASE;
   const containerName = readString(args, "containerName");
 
-  if (pathArg) {
-    cliArgs.push("--path", pathArg);
-  }
+  cliArgs.push("--path", resolvedPath);
 
   cliArgs.push("--flavor", flavor);
   cliArgs.push("--release", release);
@@ -556,6 +561,68 @@ function summariseOutput(output: string, maxLines: number): string {
 
 function normaliseText(value: string | undefined): string {
   return (value ?? "").trim().toLowerCase();
+}
+
+function ensureToolInputPathInWorkspace(inputPath: string, keyName: string): string {
+  const workspaceRoot = process.cwd();
+  const resolvedPath = path.resolve(workspaceRoot, inputPath);
+  const relativePath = path.relative(workspaceRoot, resolvedPath);
+
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    throw new Error(`${keyName} must stay within workspace: ${workspaceRoot}`);
+  }
+
+  return resolvedPath;
+}
+
+async function assertNotSymlink(targetPath: string, keyName: string): Promise<void> {
+  try {
+    const info = await lstat(targetPath);
+    if (info.isSymbolicLink()) {
+      throw new Error(`${keyName} must not point to a symbolic link`);
+    }
+  } catch (error) {
+    const maybeErr = error as NodeJS.ErrnoException;
+    if (maybeErr.code !== "ENOENT") {
+      throw error;
+    }
+  }
+}
+
+function validateConfigToken(
+  value: string,
+  keyName: string,
+  pattern: RegExp,
+): string {
+  const normalized = value.trim();
+  if (!pattern.test(normalized)) {
+    throw new Error(`Invalid ${keyName}: use a single-line safe token.`);
+  }
+  return normalized;
+}
+
+async function readTrustedReportFile(
+  reportsPath: string,
+  reportType: "json" | "sarif",
+): Promise<string> {
+  const reportFile = path.join(reportsPath, `megalinter-report.${reportType}`);
+  const reportInfo = await lstat(reportFile);
+
+  if (reportInfo.isSymbolicLink()) {
+    throw new Error(`Refusing to read report symlink: ${reportFile}`);
+  }
+
+  if (!reportInfo.isFile()) {
+    throw new Error(`Report path is not a regular file: ${reportFile}`);
+  }
+
+  if (reportInfo.size > MAX_REPORT_FILE_BYTES) {
+    throw new Error(
+      `Report file is too large (${reportInfo.size} bytes). Maximum allowed is ${MAX_REPORT_FILE_BYTES} bytes.`,
+    );
+  }
+
+  return readFile(reportFile, "utf-8");
 }
 
 function includesAny(text: string, tokens: string[]): boolean {
@@ -845,25 +912,83 @@ async function runCommand(
     const child = spawn(command, commandArgs, {
       cwd,
       env,
+      detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"],
     });
 
     let stdout = "";
     let stderr = "";
+    let stdoutTruncated = false;
+    let stderrTruncated = false;
     let timedOut = false;
 
     const timeout = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGTERM");
-      setTimeout(() => child.kill("SIGKILL"), 3000);
+      if (process.platform === "win32") {
+        if (child.pid) {
+          spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], {
+            stdio: "ignore",
+          });
+        } else {
+          child.kill("SIGTERM");
+        }
+        return;
+      }
+
+      if (child.pid) {
+        try {
+          process.kill(-child.pid, "SIGTERM");
+        } catch {
+          child.kill("SIGTERM");
+        }
+      } else {
+        child.kill("SIGTERM");
+      }
+
+      setTimeout(() => {
+        if (child.exitCode !== null) {
+          return;
+        }
+        if (child.pid) {
+          try {
+            process.kill(-child.pid, "SIGKILL");
+          } catch {
+            child.kill("SIGKILL");
+          }
+        } else {
+          child.kill("SIGKILL");
+        }
+      }, 3000);
     }, timeoutSeconds * 1000);
 
     child.stdout.on("data", (chunk: Buffer | string) => {
-      stdout += chunk.toString();
+      const text = chunk.toString();
+      const remaining = MAX_STREAM_CAPTURE_CHARS - stdout.length;
+      if (remaining <= 0) {
+        stdoutTruncated = true;
+        return;
+      }
+      if (text.length > remaining) {
+        stdout += text.slice(0, remaining);
+        stdoutTruncated = true;
+        return;
+      }
+      stdout += text;
     });
 
     child.stderr.on("data", (chunk: Buffer | string) => {
-      stderr += chunk.toString();
+      const text = chunk.toString();
+      const remaining = MAX_STREAM_CAPTURE_CHARS - stderr.length;
+      if (remaining <= 0) {
+        stderrTruncated = true;
+        return;
+      }
+      if (text.length > remaining) {
+        stderr += text.slice(0, remaining);
+        stderrTruncated = true;
+        return;
+      }
+      stderr += text;
     });
 
     child.on("error", (error) => {
@@ -873,10 +998,16 @@ async function runCommand(
 
     child.on("close", (code) => {
       clearTimeout(timeout);
+      const stdoutWithMarker = stdoutTruncated
+        ? `${stdout}\n\n... output capture truncated ...`
+        : stdout;
+      const stderrWithMarker = stderrTruncated
+        ? `${stderr}\n\n... output capture truncated ...`
+        : stderr;
       resolve({
         exitCode: code ?? 1,
-        stdout: formatOutput(stdout),
-        stderr: formatOutput(stderr),
+        stdout: formatOutput(stdoutWithMarker),
+        stderr: formatOutput(stderrWithMarker),
         timedOut,
       });
     });
@@ -886,24 +1017,30 @@ async function runCommand(
 async function handleRunTool(args: ToolArgs) {
   const runnerVersion = readString(args, "runnerVersion") ?? "latest";
   const npxPackage = resolveRunnerPackage(runnerVersion);
-  const runnerArgs = buildRunnerArgs(args);
+  const scanPath = path.resolve(
+    readString(args, "workingDirectory") ?? process.cwd(),
+  );
+  const runnerArgs = buildRunnerArgs(args, scanPath);
   const command = process.platform === "win32" ? "npx.cmd" : "npx";
-  const commandArgs = [npxPackage, ...runnerArgs];
+  const commandArgs = [
+    "--yes",
+    "--package",
+    npxPackage,
+    "mega-linter-runner",
+    ...runnerArgs,
+  ];
   const timeoutSeconds = Math.max(
     1,
     readNumber(args, "timeoutSeconds", DEFAULT_TIMEOUT_SECONDS),
   );
 
-  const workingDirectory = path.resolve(
-    readString(args, "workingDirectory") ?? process.cwd(),
-  );
-
   const env = buildRunnerEnv(args);
+  const commandWorkingDirectory = process.cwd();
 
   const result = await runCommand(
     command,
     commandArgs,
-    workingDirectory,
+    commandWorkingDirectory,
     env,
     timeoutSeconds,
   );
@@ -916,7 +1053,8 @@ async function handleRunTool(args: ToolArgs) {
 
   const responseText = [
     `Command: ${command} ${commandArgs.join(" ")}`,
-    `Working directory: ${workingDirectory}`,
+    `Command working directory: ${commandWorkingDirectory}`,
+    `Scan path: ${scanPath}`,
     `Reports path: ${reportsPath}`,
     `Exit code: ${result.exitCode}`,
     result.timedOut ? `Timed out after ${timeoutSeconds} seconds.` : "",
@@ -1113,13 +1251,20 @@ export async function handleQuickActionTool(args: ToolArgs) {
 }
 
 async function handleWriteConfigTool(args: ToolArgs) {
-  const targetPath = path.resolve(
+  const targetPath = ensureToolInputPathInWorkspace(
     readString(args, "targetPath") ?? ".mega-linter.yml",
+    "targetPath",
   );
-  const applyFixes = readString(args, "applyFixes") ?? "none";
+  const applyFixes = validateConfigToken(
+    readString(args, "applyFixes") ?? "none",
+    "applyFixes",
+    ALLOWED_APPLY_FIXES_PATTERN,
+  );
   const showElapsedTime = readBool(args, "showElapsedTime", true);
   const flavorSuggestions = readBool(args, "flavorSuggestions", false);
-  const disableLinters = readStringArray(args, "disableLinters");
+  const disableLinters = readStringArray(args, "disableLinters").map((linter) =>
+    validateConfigToken(linter, "disableLinters", ALLOWED_LINTER_ID_PATTERN),
+  );
 
   const lines: string[] = [
     "# Configuration file generated by megalinter-ox-mcp-server",
@@ -1138,6 +1283,7 @@ async function handleWriteConfigTool(args: ToolArgs) {
 
   lines.push("");
 
+  await assertNotSymlink(targetPath, "targetPath");
   await mkdir(path.dirname(targetPath), { recursive: true });
   await writeFile(targetPath, lines.join("\n"), "utf8");
 
@@ -1272,13 +1418,10 @@ export async function handleParseReportsTool(args: ToolArgs) {
   }
 
   try {
-    const reportFile = path.join(
+    const fileContent = await readTrustedReportFile(
       reportsPath,
-      `megalinter-report.${reportType}`,
+      reportType as "json" | "sarif",
     );
-    const { readFile } = await import("node:fs/promises");
-
-    const fileContent = await readFile(reportFile, "utf-8");
     const report: unknown = JSON.parse(fileContent);
 
     const summary = JSON.stringify(report, null, 2);
@@ -1310,11 +1453,7 @@ export async function handleGetIssueSummaryTool(args: ToolArgs) {
   const linterFilter = readString(args, "linterFilter");
 
   try {
-    const reportFile = path.join(reportsPath, "megalinter-report.json");
-    const { readFile } = await import("node:fs/promises");
-
-    const fileContent = await readFile(reportFile, "utf-8");
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const fileContent = await readTrustedReportFile(reportsPath, "json");
     const report = JSON.parse(fileContent) as ReportMetadata;
 
     const totalErrors = report.summary?.total_badges_errors ?? 0;
@@ -1398,11 +1537,7 @@ async function handleGetSecurityRecommendationsTool(args: ToolArgs) {
   const reportsPath = readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH;
 
   try {
-    const reportFile = path.join(reportsPath, "megalinter-report.json");
-    const { readFile } = await import("node:fs/promises");
-
-    const fileContent = await readFile(reportFile, "utf-8");
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const fileContent = await readTrustedReportFile(reportsPath, "json");
     const report = JSON.parse(fileContent) as ReportMetadata;
 
     let responseText = "# Security-Focused Recommendations\n\n";
