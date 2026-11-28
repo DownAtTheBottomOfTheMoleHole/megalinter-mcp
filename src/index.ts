@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { lstat, mkdir, readFile, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { lstat, mkdir, open, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
@@ -606,23 +607,37 @@ async function readTrustedReportFile(
   reportType: "json" | "sarif",
 ): Promise<string> {
   const reportFile = path.join(reportsPath, `megalinter-report.${reportType}`);
-  const reportInfo = await lstat(reportFile);
-
-  if (reportInfo.isSymbolicLink()) {
-    throw new Error(`Refusing to read report symlink: ${reportFile}`);
-  }
-
-  if (!reportInfo.isFile()) {
-    throw new Error(`Report path is not a regular file: ${reportFile}`);
-  }
-
-  if (reportInfo.size > MAX_REPORT_FILE_BYTES) {
-    throw new Error(
-      `Report file is too large (${reportInfo.size} bytes). Maximum allowed is ${MAX_REPORT_FILE_BYTES} bytes.`,
+  let reportHandle;
+  try {
+    reportHandle = await open(
+      reportFile,
+      constants.O_RDONLY | constants.O_NOFOLLOW,
     );
+  } catch (error) {
+    const maybeErr = error as NodeJS.ErrnoException;
+    if (maybeErr.code === "ELOOP") {
+      throw new Error(`Refusing to read report symlink: ${reportFile}`);
+    }
+    throw error;
   }
 
-  return readFile(reportFile, "utf-8");
+  try {
+    const reportInfo = await reportHandle.stat();
+
+    if (!reportInfo.isFile()) {
+      throw new Error(`Report path is not a regular file: ${reportFile}`);
+    }
+
+    if (reportInfo.size > MAX_REPORT_FILE_BYTES) {
+      throw new Error(
+        `Report file is too large (${reportInfo.size} bytes). Maximum allowed is ${MAX_REPORT_FILE_BYTES} bytes.`,
+      );
+    }
+
+    return await readFile(reportHandle, "utf-8");
+  } finally {
+    await reportHandle.close();
+  }
 }
 
 function includesAny(text: string, tokens: string[]): boolean {
