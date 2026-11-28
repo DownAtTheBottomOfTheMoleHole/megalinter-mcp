@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { constants } from "node:fs";
-import { lstat, mkdir, open, readFile, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, open, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
@@ -28,8 +29,13 @@ const DEFAULT_TIMEOUT_SECONDS = 3600;
 const DEFAULT_QUICK_TIMEOUT_MINUTES = 20;
 const MAX_STREAM_CAPTURE_CHARS = 2_000_000;
 const MAX_REPORT_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_PACKAGE_JSON_BYTES = 2 * 1024 * 1024;
 const ALLOWED_APPLY_FIXES_PATTERN = /^[A-Za-z0-9_,.-]+$/;
 const ALLOWED_LINTER_ID_PATTERN = /^[A-Za-z0-9_]+$/;
+const ALLOWED_CONTAINER_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
+const ALLOWED_IMAGE_PATTERN =
+  /^(?:ghcr\.io\/)?oxsecurity\/megalinter(?::[A-Za-z0-9._-]+)?$/;
+const ALLOWED_ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 const KNOWN_FLAVORS = [
   "all",
@@ -466,30 +472,29 @@ const server = new Server(
 function buildRunnerArgs(args: ToolArgs, defaultScanPath: string): string[] {
   const cliArgs: string[] = [];
 
-  const pathArg = readString(args, "path");
-  const resolvedPath = pathArg
-    ? path.resolve(defaultScanPath, pathArg)
-    : defaultScanPath;
   const flavor = readString(args, "flavor") ?? DEFAULT_FLAVOR;
   const image = readString(args, "image");
-  const env = readString(args, "env");
   const release = readString(args, "release") ?? DEFAULT_RELEASE;
   const containerName = readString(args, "containerName");
 
-  cliArgs.push("--path", resolvedPath);
+  cliArgs.push("--path", defaultScanPath);
 
   cliArgs.push("--flavor", flavor);
   cliArgs.push("--release", release);
 
   if (image) {
+    if (!ALLOWED_IMAGE_PATTERN.test(image)) {
+      throw new Error(
+        "image must reference an official oxsecurity/megalinter image",
+      );
+    }
     cliArgs.push("--image", image);
   }
 
-  if (env) {
-    cliArgs.push("--env", env);
-  }
-
   if (containerName) {
+    if (!ALLOWED_CONTAINER_NAME_PATTERN.test(containerName)) {
+      throw new Error("containerName contains unsupported characters");
+    }
     cliArgs.push("--container-name", containerName);
   }
 
@@ -511,7 +516,9 @@ function buildRunnerArgs(args: ToolArgs, defaultScanPath: string): string[] {
 
   const extraArgs = readStringArray(args, "extraArgs");
   if (extraArgs.length > 0) {
-    cliArgs.push(...extraArgs);
+    throw new Error(
+      "extraArgs is not supported for security reasons. Use explicit tool parameters instead.",
+    );
   }
 
   return cliArgs;
@@ -524,10 +531,16 @@ function buildRunnerEnv(args: ToolArgs): NodeJS.ProcessEnv {
 
   const configFile = readString(args, "configFile");
   if (configFile) {
-    env.MEGALINTER_CONFIG = configFile;
+    env.MEGALINTER_CONFIG = ensureToolInputPathInWorkspace(
+      configFile,
+      "configFile",
+    );
   }
 
-  const reportsPath = readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH;
+  const reportsPath = ensureToolInputPathInWorkspace(
+    readString(args, "reportsPath") ?? DEFAULT_REPORTS_PATH,
+    "reportsPath",
+  );
   env.MEGALINTER_REPORTS_PATH = reportsPath;
 
   const disableLinters = readString(args, "disableLinters");
@@ -537,6 +550,12 @@ function buildRunnerEnv(args: ToolArgs): NodeJS.ProcessEnv {
 
   if (readBool(args, "lintChangedFilesOnly")) {
     env.VALIDATE_ALL_CODEBASE = "false";
+  }
+
+  const envArg = readString(args, "env");
+  if (envArg) {
+    const parsedEnv = parseEnvAssignment(envArg);
+    env[parsedEnv.key] = parsedEnv.assignment.slice(parsedEnv.key.length + 1);
   }
 
   return env;
@@ -576,18 +595,62 @@ function ensureToolInputPathInWorkspace(inputPath: string, keyName: string): str
   return resolvedPath;
 }
 
-async function assertNotSymlink(targetPath: string, keyName: string): Promise<void> {
-  try {
-    const info = await lstat(targetPath);
-    if (info.isSymbolicLink()) {
-      throw new Error(`${keyName} must not point to a symbolic link`);
-    }
-  } catch (error) {
-    const maybeErr = error as NodeJS.ErrnoException;
-    if (maybeErr.code !== "ENOENT") {
-      throw error;
-    }
+function isPathWithin(basePath: string, candidatePath: string): boolean {
+  const relativePath = path.relative(basePath, candidatePath);
+  return !(relativePath.startsWith("..") || path.isAbsolute(relativePath));
+}
+
+async function ensureWorkspacePathResolvesInWorkspace(
+  inputPath: string,
+  keyName: string,
+): Promise<string> {
+  const workspaceRoot = process.cwd();
+  const resolvedPath = ensureToolInputPathInWorkspace(inputPath, keyName);
+  const resolvedRealPath = await realpath(resolvedPath);
+
+  if (!isPathWithin(workspaceRoot, resolvedRealPath)) {
+    throw new Error(
+      `${keyName} resolves outside workspace after symlink resolution: ${workspaceRoot}`,
+    );
   }
+
+  return resolvedPath;
+}
+
+async function ensureWorkspaceDirectoryPath(
+  inputPath: string,
+  keyName: string,
+): Promise<string> {
+  const resolvedPath = await ensureWorkspacePathResolvesInWorkspace(
+    inputPath,
+    keyName,
+  );
+  const info = await lstat(resolvedPath);
+  if (!info.isDirectory()) {
+    throw new Error(`${keyName} must point to a directory: ${resolvedPath}`);
+  }
+  return resolvedPath;
+}
+
+function getSafeNpmConfigPath(commandWorkingDirectory: string, fileName: string): string {
+  return path.join(commandWorkingDirectory, fileName);
+}
+
+function parseEnvAssignment(value: string): { key: string; assignment: string } {
+  const separatorIndex = value.indexOf("=");
+  if (separatorIndex <= 0) {
+    throw new Error(
+      "Invalid env format. Use a single KEY=VALUE assignment (for example: DISABLE_LINTERS=SPELL_CSPELL).",
+    );
+  }
+
+  const key = value.slice(0, separatorIndex).trim();
+  const envValue = value.slice(separatorIndex + 1);
+  if (!ALLOWED_ENV_KEY_PATTERN.test(key)) {
+    throw new Error(`Invalid env key: ${key}`);
+  }
+
+  return { key, assignment: `${key}=${envValue}` };
 }
 
 function validateConfigToken(
@@ -606,7 +669,11 @@ async function readTrustedReportFile(
   reportsPath: string,
   reportType: "json" | "sarif",
 ): Promise<string> {
-  const reportFile = path.join(reportsPath, `megalinter-report.${reportType}`);
+  const safeReportsPath = await ensureWorkspaceDirectoryPath(
+    reportsPath,
+    "reportsPath",
+  );
+  const reportFile = path.join(safeReportsPath, `megalinter-report.${reportType}`);
   let reportHandle;
   try {
     reportHandle = await open(
@@ -831,7 +898,6 @@ async function detectProjectContext(): Promise<{
   hasTerraform: boolean;
   hasSecurity: boolean;
 }> {
-  const { readFile } = await import("node:fs/promises");
   const { existsSync } = await import("node:fs");
 
   const languages: string[] = [];
@@ -843,8 +909,23 @@ async function detectProjectContext(): Promise<{
   // Detect languages via package managers and config files
   if (existsSync("package.json")) {
     languages.push("javascript");
+    let packageFile;
     try {
-      const pkg = JSON.parse(await readFile("package.json", "utf-8")) as {
+      packageFile = await open(
+        "package.json",
+        constants.O_RDONLY | constants.O_NOFOLLOW,
+      );
+      const packageInfo = await packageFile.stat();
+      if (!packageInfo.isFile()) {
+        throw new Error("package.json must be a regular file");
+      }
+      if (packageInfo.size > MAX_PACKAGE_JSON_BYTES) {
+        throw new Error(
+          `package.json exceeds maximum allowed size (${MAX_PACKAGE_JSON_BYTES} bytes)`,
+        );
+      }
+      const packageText = await packageFile.readFile("utf-8");
+      const pkg = JSON.parse(packageText) as {
         dependencies?: Record<string, string>;
         devDependencies?: Record<string, string>;
       };
@@ -866,6 +947,8 @@ async function detectProjectContext(): Promise<{
       }
     } catch {
       /* ignore parse errors */
+    } finally {
+      await packageFile?.close();
     }
   }
 
@@ -1032,8 +1115,16 @@ async function runCommand(
 async function handleRunTool(args: ToolArgs) {
   const runnerVersion = readString(args, "runnerVersion") ?? "latest";
   const npxPackage = resolveRunnerPackage(runnerVersion);
-  const scanPath = path.resolve(
+  const requestedPath = readString(args, "path");
+  const workingDirectory = await ensureWorkspaceDirectoryPath(
     readString(args, "workingDirectory") ?? process.cwd(),
+    "workingDirectory",
+  );
+  const scanPath = await ensureWorkspaceDirectoryPath(
+    requestedPath
+      ? path.resolve(workingDirectory, requestedPath)
+      : workingDirectory,
+    "path",
   );
   const runnerArgs = buildRunnerArgs(args, scanPath);
   const command = process.platform === "win32" ? "npx.cmd" : "npx";
@@ -1050,15 +1141,33 @@ async function handleRunTool(args: ToolArgs) {
   );
 
   const env = buildRunnerEnv(args);
-  const commandWorkingDirectory = process.cwd();
-
-  const result = await runCommand(
-    command,
-    commandArgs,
-    commandWorkingDirectory,
-    env,
-    timeoutSeconds,
+  const commandWorkingDirectory = await mkdtemp(
+    path.join(tmpdir(), "megalinter-mcp-npx-"),
   );
+  const safeUserConfig = getSafeNpmConfigPath(commandWorkingDirectory, ".npmrc");
+  const safeGlobalConfig = getSafeNpmConfigPath(
+    commandWorkingDirectory,
+    ".npmrc-global",
+  );
+  env.NPM_CONFIG_USERCONFIG = safeUserConfig;
+  env.npm_config_userconfig = safeUserConfig;
+  env.NPM_CONFIG_GLOBALCONFIG = safeGlobalConfig;
+  env.npm_config_globalconfig = safeGlobalConfig;
+  await writeFile(safeUserConfig, "", "utf8");
+  await writeFile(safeGlobalConfig, "", "utf8");
+
+  let result: ProcessResult;
+  try {
+    result = await runCommand(
+      command,
+      commandArgs,
+      commandWorkingDirectory,
+      env,
+      timeoutSeconds,
+    );
+  } finally {
+    await rm(commandWorkingDirectory, { recursive: true, force: true });
+  }
 
   const reportsPath = env.MEGALINTER_REPORTS_PATH ?? DEFAULT_REPORTS_PATH;
   const summaryOnly = readBool(args, "summaryOnly", false);
@@ -1298,9 +1407,39 @@ async function handleWriteConfigTool(args: ToolArgs) {
 
   lines.push("");
 
-  await assertNotSymlink(targetPath, "targetPath");
   await mkdir(path.dirname(targetPath), { recursive: true });
-  await writeFile(targetPath, lines.join("\n"), "utf8");
+  const workspaceRoot = process.cwd();
+  const realParentPath = await realpath(path.dirname(targetPath));
+  if (!isPathWithin(workspaceRoot, realParentPath)) {
+    throw new Error(
+      `targetPath resolves outside workspace after symlink resolution: ${workspaceRoot}`,
+    );
+  }
+
+  let targetHandle;
+  try {
+    targetHandle = await open(
+      targetPath,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW,
+      0o600,
+    );
+  } catch (error) {
+    const maybeErr = error as NodeJS.ErrnoException;
+    if (maybeErr.code === "ELOOP") {
+      throw new Error("targetPath must not point to a symbolic link");
+    }
+    throw error;
+  }
+
+  try {
+    const targetInfo = await targetHandle.stat();
+    if (!targetInfo.isFile()) {
+      throw new Error(`targetPath is not a regular file: ${targetPath}`);
+    }
+    await targetHandle.writeFile(lines.join("\n"), "utf8");
+  } finally {
+    await targetHandle.close();
+  }
 
   return {
     content: [
