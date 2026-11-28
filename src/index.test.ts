@@ -259,6 +259,19 @@ describe("MCP tool handlers", () => {
     ).rejects.toThrow(/must not point to a symbolic link/);
   });
 
+  it("rejects writing config through symlinked parent directories", async () => {
+    const outsideDir = "/tmp";
+    const linkedParent = path.join(testDir, "linked-parent");
+    await symlink(outsideDir, linkedParent);
+
+    await expect(
+      handleQuickActionTool({
+        request: "write config",
+        targetPath: path.join(linkedParent, "config.yml"),
+      }),
+    ).rejects.toThrow(/resolves outside workspace/);
+  });
+
   it("quick action supports explicit summary action and severity", async () => {
     const report = {
       summary: {
@@ -407,6 +420,20 @@ describe("MCP tool handlers", () => {
 
     expect(result.isError).toBe(true);
     expect(firstText(result)).toContain("Refusing to read report symlink");
+  });
+
+  it("parse reports rejects reportsPath symlinks that resolve outside workspace", async () => {
+    const outsideReportsDir = "/tmp";
+    const linkedReportsDir = path.join(testDir, "linked-reports");
+    await symlink(outsideReportsDir, linkedReportsDir);
+
+    const result = (await handleParseReportsTool({
+      reportType: "json",
+      reportsPath: linkedReportsDir,
+    })) as ToolTextResult;
+
+    expect(result.isError).toBe(true);
+    expect(firstText(result)).toContain("resolves outside workspace");
   });
 
   it("parse reports rejects oversized report files", async () => {
