@@ -179,4 +179,17 @@ describe("resolveRunnerPackage", () => {
     expect(resolveRunnerPackage("1.2.3")).toBe("mega-linter-runner@1.2.3");
     expect(resolveRunnerPackage("v8.0.0")).toBe("mega-linter-runner@v8.0.0");
   });
+
+  it("trims surrounding whitespace in runner version", () => {
+    expect(resolveRunnerPackage("  1.2.3  ")).toBe("mega-linter-runner@1.2.3");
+  });
+
+  it("rejects unsafe runner version values", () => {
+    expect(() => resolveRunnerPackage("npm:evil@1.0.0")).toThrow(
+      /Invalid runnerVersion/,
+    );
+    expect(() => resolveRunnerPackage("1.2.3\nx")).toThrow(
+      /Invalid runnerVersion/,
+    );
+  });
 });

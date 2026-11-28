@@ -179,7 +179,7 @@ Inputs:
 - `reportsPath` (string, optional): Reports directory. Default: `megalinter-reports`.
 - `disableLinters` (string, optional): Comma-separated list of linters to disable.
 - `lintChangedFilesOnly` (boolean, optional): Sets `VALIDATE_ALL_CODEBASE=false` when true.
-- `runnerVersion` (string, optional): npm version for `mega-linter-runner` (for example `latest`).
+- `runnerVersion` (string, optional): npm version/tag for `mega-linter-runner` using only npm-safe characters (for example `latest` or `1.2.3`).
 - `timeoutSeconds` (number, optional): Timeout in seconds. Default: `3600`.
 - `summaryOnly` (boolean, optional): Return concise logs. Default: `false`.
 - `extraArgs` (string[], optional): Additional CLI arguments.
@@ -190,11 +190,11 @@ Writes a minimal MegaLinter configuration.
 
 Inputs:
 
-- `targetPath` (string, optional): Output file path. Default: `.mega-linter.yml`.
-- `applyFixes` (string, optional): Value for `APPLY_FIXES`. Default: `none`.
+- `targetPath` (string, optional): Output file path inside the current workspace. Default: `.mega-linter.yml`.
+- `applyFixes` (string, optional): Value for `APPLY_FIXES` (single-line token). Default: `none`.
 - `showElapsedTime` (boolean, optional): Value for `SHOW_ELAPSED_TIME`. Default: `true`.
 - `flavorSuggestions` (boolean, optional): Value for `FLAVOR_SUGGESTIONS`. Default: `false`.
-- `disableLinters` (string[], optional): Values for `DISABLE_LINTERS`.
+- `disableLinters` (string[], optional): Linter IDs for `DISABLE_LINTERS` (letters, numbers, underscores).
 
 ### `megalinter_list_flavors`
 
@@ -234,6 +234,7 @@ Inputs:
 
 - `reportsPath` (string, optional): Report directory path. Default: `megalinter-reports`.
 - `reportType` (string, optional): Report type (`json` or `sarif`). Default: `json`.
+  - Report files must be regular files (not symlinks) and must be <= 10 MB.
 
 ### `megalinter_get_issue_summary`
 
