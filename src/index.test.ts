@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   handleGetIssueSummaryTool,
   handleGetLintersTool,
+  handleHelpQuickTool,
   handleParseReportsTool,
   handleQuickActionTool,
 } from "./index.js";
@@ -453,11 +454,21 @@ describe("MCP tool handlers", () => {
   });
 
   it("help quick tool returns context-aware suggestions", async () => {
-    const { handleHelpQuickTool } = await import("./index.js");
     const result = (await handleHelpQuickTool()) as ToolTextResult;
 
     expect(firstText(result)).toContain("# MegaLinter Quick Help");
     expect(firstText(result)).toContain("Ultra-short aliases");
+  });
+
+  it("help quick tool omits language suggestions when package.json is absent", async () => {
+    const originalCwd = process.cwd();
+    process.chdir(testDir);
+    try {
+      const result = (await handleHelpQuickTool()) as ToolTextResult;
+      expect(firstText(result)).not.toContain("## Detected Languages:");
+    } finally {
+      process.chdir(originalCwd);
+    }
   });
 
   it("scan with unsupported language returns actionable error", async () => {

@@ -907,14 +907,14 @@ async function detectProjectContext(): Promise<{
   let hasSecurity = false;
 
   // Detect languages via package managers and config files
-  if (existsSync("package.json")) {
+  let packageFile;
+  try {
+    packageFile = await open(
+      "package.json",
+      constants.O_RDONLY | constants.O_NOFOLLOW,
+    );
     languages.push("javascript");
-    let packageFile;
     try {
-      packageFile = await open(
-        "package.json",
-        constants.O_RDONLY | constants.O_NOFOLLOW,
-      );
       const packageInfo = await packageFile.stat();
       if (!packageInfo.isFile()) {
         throw new Error("package.json must be a regular file");
@@ -947,9 +947,11 @@ async function detectProjectContext(): Promise<{
       }
     } catch {
       /* ignore parse errors */
-    } finally {
-      await packageFile?.close();
     }
+  } catch {
+    /* ignore missing and access errors */
+  } finally {
+    await packageFile?.close();
   }
 
   if (existsSync("requirements.txt") || existsSync("setup.py") || existsSync("pyproject.toml")) {
