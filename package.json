@@ -52,11 +52,11 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@types/node": "25.9.9",
-    "@typescript-eslint/eslint-plugin": "8.72.1",
-    "@typescript-eslint/parser": "8.72.1",
+    "@types/node": "25.9.12",
+    "@typescript-eslint/eslint-plugin": "8.74.0",
+    "@typescript-eslint/parser": "8.74.0",
     "@vitest/coverage-v8": "^4.1.12",
-    "eslint": "10.14.0",
+    "eslint": "10.16.0",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vitest": "4.1.12"
